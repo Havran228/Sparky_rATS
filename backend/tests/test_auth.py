@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+from tests.conftest import make_settings
 
 from app.auth import resolve_principal
-from tests.conftest import make_settings
 
 
 def test_health_is_public_and_bearer_opens_the_api(

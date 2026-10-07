@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -79,7 +80,9 @@ class VectorStore:
         structs: list[PointStruct] = []
         for point in points:
             if len(point.vector) != VECTOR_SIZE:
-                raise ValueError(f"vector {point.id} has {len(point.vector)} dims, expected {VECTOR_SIZE}")
+                raise ValueError(
+                    f"vector {point.id} has {len(point.vector)} dims, expected {VECTOR_SIZE}"
+                )
             structs.append(
                 PointStruct(
                     id=point.id,
@@ -132,7 +135,9 @@ class VectorStore:
         hits: list[VectorHit] = []
         for point in response.points:
             payload = dict(point.payload or {})
-            hits.append(VectorHit(id=str(point.id), score=float(point.score or 0.0), payload=payload))
+            hits.append(
+                VectorHit(id=str(point.id), score=float(point.score or 0.0), payload=payload)
+            )
         return hits
 
     def _ensure_collection(self) -> None:
@@ -143,11 +148,18 @@ class VectorStore:
             )
         for field in _KEYWORD_FIELDS:
             try:
-                self._client.create_payload_index(
-                    collection_name=COLLECTION,
-                    field_name=field,
-                    field_schema=PayloadSchemaType.KEYWORD,
-                )
+                # Local Qdrant ignores payload indexes and warns. The call stays
+                # so a server-mode swap keeps the ADR-004 keyword indexes.
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore",
+                        message="Payload indexes have no effect in the local Qdrant.*",
+                    )
+                    self._client.create_payload_index(
+                        collection_name=COLLECTION,
+                        field_name=field,
+                        field_schema=PayloadSchemaType.KEYWORD,
+                    )
             except Exception as exc:
                 message = str(exc).lower()
                 if "already exists" in message or "already" in message:

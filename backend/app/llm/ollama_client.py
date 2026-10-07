@@ -67,7 +67,10 @@ class OllamaClient:
 
     async def health(self) -> OllamaHealth:
         try:
-            response = await self._http.get("/api/ps", timeout=self._settings.ollama_health_timeout_seconds)
+            response = await self._http.get(
+                "/api/ps",
+                timeout=self._settings.ollama_health_timeout_seconds,
+            )
             response.raise_for_status()
         except Exception as exc:
             return OllamaHealth(ok=False, detail=type(exc).__name__)
