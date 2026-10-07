@@ -1,0 +1,81 @@
+# Sparky_rATS — three services (ADR-001).
+# Ollama is the only service with the GPU. It is not published on the host;
+# the backend reaches it at http://ollama:11434.
+# API and MCP are published on SPARKY_BIND_HOST only (ADR-013). Inside the
+# container the process listens on 0.0.0.0 so Docker can map the port.
+
+name: sparky_rats
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    environment:
+      OLLAMA_MODELS: /data/ollama
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_FLASH_ATTENTION: "1"
+      OLLAMA_KV_CACHE_TYPE: q8_0
+      OLLAMA_MAX_LOADED_MODELS: "3"
+      OLLAMA_KEEP_ALIVE: "10m"
+    volumes:
+      - ${SPARKY_HOST_DATA_DIR:-/mnt/data/sparky_rats}:/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      SPARKY_DATA_DIR: /data
+      SPARKY_OLLAMA_BASE_URL: http://ollama:11434
+      SPARKY_API_HOST: 0.0.0.0
+      SPARKY_API_PORT: "8000"
+      SPARKY_MCP_PORT: "8001"
+      SPARKY_MODEL_FAST: ${SPARKY_MODEL_FAST:-qwen3:30b-a3b}
+      SPARKY_MODEL_HEAVY: ${SPARKY_MODEL_HEAVY:-gpt-oss:120b}
+      SPARKY_MODEL_VISION: ${SPARKY_MODEL_VISION:-qwen3-vl:8b}
+      SPARKY_MODEL_EMBED: ${SPARKY_MODEL_EMBED:-bge-m3}
+      SPARKY_API_TOKEN: ${SPARKY_API_TOKEN:-}
+      SPARKY_MCP_TOKEN: ${SPARKY_MCP_TOKEN:-}
+      SPARKY_MASTER_KEY: ${SPARKY_MASTER_KEY:-}
+      SPARKY_TAILSCALE_PROXY_HOSTS: ${SPARKY_TAILSCALE_PROXY_HOSTS:-127.0.0.1,::1}
+      SPARKY_CORS_ORIGINS: ${SPARKY_CORS_ORIGINS:-http://127.0.0.1:3000,http://localhost:3000}
+    volumes:
+      - ${SPARKY_HOST_DATA_DIR:-/mnt/data/sparky_rats}:/data
+    depends_on:
+      - ollama
+    ports:
+      - "${SPARKY_BIND_HOST:-127.0.0.1}:8000:8000"
+      - "${SPARKY_BIND_HOST:-127.0.0.1}:8001:8001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://127.0.0.1:8000}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://127.0.0.1:8000}
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "${SPARKY_BIND_HOST:-127.0.0.1}:3000:3000"
+    depends_on:
+      - backend
