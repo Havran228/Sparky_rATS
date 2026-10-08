@@ -9,8 +9,35 @@ down for recruiters. Sparky_rATS flips that: it ingests the job, compares it aga
 actually done, tells you where you pass, where you can bridge, and where you genuinely fall short,
 and then compiles an ATS-safe CV and cover letter (EN / SK) that you review and submit yourself.
 
-> Status: **design phase**. Architecture decisions are recorded in [docs/ADR.md](docs/ADR.md).
-> No application code has been written yet. This README is the project outline the build follows.
+> Status: **Slice 0 skeleton is implemented.** Architecture decisions are recorded in
+> [docs/ADR.md](docs/ADR.md). Slices 1–5 are not built yet. This README remains the outline
+> the rest of the build follows.
+
+### Run the skeleton
+
+Python 3.12, from a virtualenv:
+
+```bash
+pip install -e "backend[dev]"
+export SPARKY_DATA_DIR=/tmp/sparky_rats
+export SPARKY_API_TOKEN=dev-token
+export SPARKY_MCP_TOKEN=dev-mcp-token
+uvicorn app.main:app --host 127.0.0.1 --port 8002
+```
+
+`GET /health` is open. Every other API route needs `Authorization: Bearer $SPARKY_API_TOKEN`,
+or a `Tailscale-User-Login` header when the TCP peer is listed in
+`SPARKY_TAILSCALE_PROXY_HOSTS`. The MCP placeholder listens on port 8001 and accepts only
+`SPARKY_MCP_TOKEN`. If a token is unset, the backend generates one and writes it under
+`$SPARKY_DATA_DIR/credentials/` (mode 0600).
+
+```bash
+cd frontend && npm install && npm run dev
+```
+
+On the Spark, `docker compose up --build` publishes the API on host port 8002
+(the container still listens on 8000; host port 8000 is left for Portainer), MCP on 8001, and the UI
+on `SPARKY_BIND_HOST` (default `127.0.0.1`). It reserves the GPU for Ollama only. See `.env.example`.
 
 ---
 
@@ -218,6 +245,8 @@ Planned layout (created incrementally by the build slices):
 │   │   ├── main.py                 # FastAPI entry, lifespan starts watcher + MCP
 │   │   ├── config.py               # env, model roles, paths
 │   │   ├── auth.py                 # Tailscale identity / shared secret
+│   │   ├── secrets_store.py        # Fernet blobs, master.key bootstrap
+│   │   ├── inbox_observer.py       # watchdog thread used by the watcher stub
 │   │   ├── db/                     # connection, migrations/*.sql, repositories
 │   │   ├── vector_store.py         # embedded Qdrant wrapper (single instance)
 │   │   ├── jobs.py                 # async job runner + SSE
