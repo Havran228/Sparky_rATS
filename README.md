@@ -22,7 +22,7 @@ pip install -e "backend[dev]"
 export SPARKY_DATA_DIR=/tmp/sparky_rats
 export SPARKY_API_TOKEN=dev-token
 export SPARKY_MCP_TOKEN=dev-mcp-token
-uvicorn app.main:app --host 127.0.0.1 --port 8000
+uvicorn app.main:app --host 127.0.0.1 --port 8002
 ```
 
 `GET /health` is open. Every other API route needs `Authorization: Bearer $SPARKY_API_TOKEN`,
@@ -35,8 +35,9 @@ or a `Tailscale-User-Login` header when the TCP peer is listed in
 cd frontend && npm install && npm run dev
 ```
 
-On the Spark, `docker compose up --build` publishes the API, MCP, and UI on `SPARKY_BIND_HOST`
-(default `127.0.0.1`) and reserves the GPU for Ollama only. See `.env.example`.
+On the Spark, `docker compose up --build` publishes the API on host port 8002
+(the container still listens on 8000; host port 8000 is left for Portainer), MCP on 8001, and the UI
+on `SPARKY_BIND_HOST` (default `127.0.0.1`). It reserves the GPU for Ollama only. See `.env.example`.
 
 ---
 

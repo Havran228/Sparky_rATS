@@ -14,7 +14,7 @@ export type Health = {
 };
 
 export function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
+  return process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8002";
 }
 
 export async function getHealth(signal?: AbortSignal): Promise<Health> {
