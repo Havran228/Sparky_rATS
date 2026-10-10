@@ -21,6 +21,7 @@ import httpx
 
 from app.crawl_fallback import FallbackUnavailable
 from app.crawl_fallback import markdown as crawl_markdown
+from app.ingest.profesia import BROWSER_HEADERS, parse_profesia_html
 
 _ID_RE = re.compile(
     r"^(?:(?:profesia|id|ponuka)[:\s=/-]*)?(\d{7})$",
@@ -49,15 +50,6 @@ _MIME_BY_SUFFIX = {
 }
 
 Fallback = Callable[[str], Awaitable[str]]
-
-BROWSER_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "sk,en;q=0.8",
-}
 
 
 class InputKind(StrEnum):
@@ -133,12 +125,11 @@ def profesia_url_for(profesia_id: str) -> str:
     return f"https://www.profesia.sk/praca/?id={profesia_id}"
 
 
-def needs_fallback(status_code: int, html: str, job_posting: dict[str, object] | None) -> bool:
+def needs_headless_fallback(status_code: int, html: str) -> bool:
+    """Crawl4AI is only for a blocked response. Missing JSON-LD stays on the HTML parser."""
     if status_code in {403, 503}:
         return True
-    if _CHALLENGE_RE.search(html):
-        return True
-    return job_posting is None
+    return _CHALLENGE_RE.search(html) is not None
 
 
 def parse_job_html(html: str) -> tuple[str, dict[str, object] | None, str]:
@@ -166,12 +157,17 @@ async def fetch_posting(
         host = urlparse(url).netloc or "unknown"
         if limiter is not None:
             await limiter.wait(host)
-        response = await http.get(url)
+        response = await http.get(url, headers=BROWSER_HEADERS)
         html = response.text
         cache_path = _write_cache(cache_dir, url, html)
         markdown, job, _title = parse_job_html(html)
         status = response.status_code
-        if not needs_fallback(status, html, job):
+        html_posting = parse_profesia_html(html)
+        if job is None:
+            job = html_posting.as_job_posting()
+            if html_posting.markdown:
+                markdown = html_posting.markdown
+        if not needs_headless_fallback(status, html):
             return FetchedPosting(
                 url=url,
                 status_code=status,
@@ -181,17 +177,14 @@ async def fetch_posting(
                 used_fallback=False,
                 cache_path=str(cache_path),
             )
-        fallback_fn = crawl_markdown if fallback is None else fallback
-        rendered = await fallback_fn(url)
-        if not isinstance(rendered, str):
-            raise FallbackUnavailable("fallback did not return text")
+        rendered = await _optional_headless(url, fallback)
         return FetchedPosting(
             url=url,
             status_code=status,
             html=html,
-            markdown=rendered.strip() or markdown,
+            markdown=rendered or markdown,
             job_posting=job,
-            used_fallback=True,
+            used_fallback=rendered is not None,
             cache_path=str(cache_path),
         )
     finally:
@@ -260,6 +253,17 @@ class _PageParser(HTMLParser):
             return
         self._blocks.append(" ".join(self._text))
         self._text = []
+
+
+async def _optional_headless(url: str, fallback: Fallback | None) -> str | None:
+    fallback_fn = crawl_markdown if fallback is None else fallback
+    try:
+        rendered = await fallback_fn(url)
+    except FallbackUnavailable:
+        return None
+    if isinstance(rendered, str) and rendered.strip():
+        return rendered.strip()
+    return None
 
 
 def _url_id(url: str) -> str | None:

@@ -5,7 +5,9 @@ from pathlib import Path
 import httpx
 import pytest
 
-from app.services.scraper import fetch_posting, needs_fallback, parse_job_html
+from app.crawl_fallback import FallbackUnavailable
+from app.ingest.profesia import BROWSER_HEADERS, parse_profesia_html
+from app.services.scraper import fetch_posting, needs_headless_fallback, parse_job_html
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -21,17 +23,30 @@ def test_json_ld_fixture_parses_without_network() -> None:
     assert org["name"] == "Northwind s.r.o."
     assert "Python and PostgreSQL" in markdown
     assert "Zodpovednosť za API" in markdown
-    assert needs_fallback(200, html, job) is False
+    assert needs_headless_fallback(200, html) is False
 
 
-def test_challenge_and_missing_json_ld_need_fallback() -> None:
+def test_headless_is_only_for_a_blocked_response() -> None:
     challenge = (FIXTURES / "profesia_challenge.html").read_text(encoding="utf-8")
     _markdown, job, _title = parse_job_html(challenge)
     assert job is None
-    assert needs_fallback(200, challenge, job) is True
-    assert needs_fallback(403, "<html>ok</html>", {"title": "x"}) is True
-    assert needs_fallback(503, "<html>ok</html>", {"title": "x"}) is True
-    assert needs_fallback(200, "<html><p>no schema</p></html>", None) is True
+    assert needs_headless_fallback(200, challenge) is True
+    assert needs_headless_fallback(403, "<html>ok</html>") is True
+    assert needs_headless_fallback(503, "<html>ok</html>") is True
+    assert needs_headless_fallback(200, "<html><p>no schema</p></html>") is False
+
+
+def test_html_fallback_reads_title_company_salary_and_body() -> None:
+    html = (FIXTURES / "profesia_html_only.html").read_text(encoding="utf-8")
+    parsed = parse_profesia_html(html)
+    assert parsed.title == "Backend engineer"
+    assert parsed.company == "Northwind s.r.o."
+    assert parsed.salary == "2 500 - 3 500 € brutto"
+    assert "Python and PostgreSQL." in parsed.markdown
+    assert "Zodpovednosť za API" in parsed.markdown
+    posting = parsed.as_job_posting()
+    assert posting is not None
+    assert posting["title"] == "Backend engineer"
 
 
 @pytest.mark.asyncio
@@ -40,6 +55,8 @@ async def test_fetch_uses_cache_and_skips_fallback_on_json_ld(tmp_path: Path) ->
     calls = 0
 
     def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["user-agent"] == BROWSER_HEADERS["User-Agent"]
+        assert request.headers["accept-language"] == "sk,cs,en;q=0.9"
         return httpx.Response(200, text=html)
 
     async def fallback(url: str) -> str:
@@ -62,12 +79,17 @@ async def test_fetch_uses_cache_and_skips_fallback_on_json_ld(tmp_path: Path) ->
 
 
 @pytest.mark.asyncio
-async def test_fetch_falls_back_when_json_ld_is_missing(tmp_path: Path) -> None:
+async def test_missing_json_ld_uses_html_parser_not_crawl4ai(tmp_path: Path) -> None:
+    html = (FIXTURES / "profesia_html_only.html").read_text(encoding="utf-8")
+    calls = 0
+
     async def fallback(url: str) -> str:
-        return "Rendered posting body"
+        nonlocal calls
+        calls += 1
+        return "should not run"
 
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, text="<html><p>empty shell</p></html>")
+        return httpx.Response(200, text=html)
 
     transport = httpx.MockTransport(handler)
     async with httpx.AsyncClient(transport=transport) as client:
@@ -77,6 +99,32 @@ async def test_fetch_falls_back_when_json_ld_is_missing(tmp_path: Path) -> None:
             client=client,
             fallback=fallback,
         )
-    assert fetched.used_fallback is True
-    assert fetched.markdown == "Rendered posting body"
+    assert calls == 0
+    assert fetched.used_fallback is False
+    assert fetched.job_posting is not None
+    assert fetched.job_posting["title"] == "Backend engineer"
+    assert "2 500 - 3 500 € brutto" in fetched.markdown
     assert (tmp_path / "5555555.html").is_file()
+
+
+@pytest.mark.asyncio
+async def test_blocked_page_survives_when_crawl4ai_is_missing(tmp_path: Path) -> None:
+    html = (FIXTURES / "profesia_html_only.html").read_text(encoding="utf-8")
+
+    async def fallback(url: str) -> str:
+        raise FallbackUnavailable("Crawl4AI is not installed")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(403, text=html)
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        fetched = await fetch_posting(
+            "https://www.profesia.sk/praca/?id=6666666",
+            cache_dir=tmp_path,
+            client=client,
+            fallback=fallback,
+        )
+    assert fetched.used_fallback is False
+    assert fetched.status_code == 403
+    assert "Backend engineer" in fetched.markdown
