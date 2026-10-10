@@ -17,7 +17,7 @@ def test_migrations_are_idempotent_and_wal(settings) -> None:
     finally:
         db.close()
 
-    assert first == [1]
+    assert first == [1, 2]
     assert second == []
     assert mode is not None and str(mode[0]).lower() == "wal"
     assert foreign_keys is not None and int(foreign_keys[0]) == 1

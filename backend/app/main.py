@@ -22,7 +22,9 @@ from app.db.repositories.jobs import RESTART_ERROR, JobRepository
 from app.jobs import JobRunner, format_sse
 from app.llm.ollama_client import OllamaClient, OllamaHealth
 from app.mcp_server import create_mcp_app
+from app.routes.projects import install_project_routes
 from app.secrets_store import SecretsStore, ensure_bearer, load_fernet
+from app.services.ingest import register_ingest_handler
 from app.services.watcher import InboxWatcher
 from app.vector_store import VectorStore
 
@@ -110,6 +112,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         return StreamingResponse(stream(), media_type="text/event-stream")
 
+    install_project_routes(app)
     return app
 
 
@@ -206,6 +209,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ollama = OllamaClient(settings)
         app.state.ollama = ollama
         runner = JobRunner(db, general_concurrency=settings.general_job_concurrency)
+        register_ingest_handler(runner, db, ollama, settings)
         app.state.job_runner = runner
         if settings.enable_watcher:
             watcher.start()

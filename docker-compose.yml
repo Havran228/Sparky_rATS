@@ -74,6 +74,8 @@ services:
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://127.0.0.1:8002}
+      SPARKY_API_BASE: http://backend:8000
+      SPARKY_API_TOKEN: ${SPARKY_API_TOKEN:-}
       HOSTNAME: 0.0.0.0
     ports:
       - "${SPARKY_BIND_HOST:-127.0.0.1}:3000:3000"
