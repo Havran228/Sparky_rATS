@@ -3,7 +3,7 @@ import { HealthPanel } from "@/components/HealthPanel";
 const LOOPS = [
   {
     title: "Target job",
-    detail: "Profesia link, id, PDF, or photo becomes a project. Slice 1.",
+    detail: "Paste a Profesia link or posting on Projects. PDFs arrive in slice 2.",
   },
   {
     title: "Knowledge bundles",

@@ -31,7 +31,7 @@ where = ["."]
 include = ["app*"]
 
 [tool.setuptools.package-data]
-app = ["db/migrations/*.sql"]
+app = ["db/migrations/*.sql", "llm/prompts/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,0 +1,6 @@
+Extract one job posting into the required JSON schema.
+Use only facts present in the posting. Do not invent requirements, salary figures, or a company name.
+Salary: keep ranges, phrases such as "od X", hourly rates, and whether the amount is brutto/gross or netto/net.
+contract_type is TPP for an employment contract, SZCO for a trade licence, DOHODA for a Slovak agreement outside employment, OTHER when a different contract is explicit, otherwise UNKNOWN.
+language is a short code such as sk or en.
+Put each requirement and offering in its own list item, in the posting language.

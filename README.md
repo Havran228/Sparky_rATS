@@ -9,9 +9,9 @@ down for recruiters. Sparky_rATS flips that: it ingests the job, compares it aga
 actually done, tells you where you pass, where you can bridge, and where you genuinely fall short,
 and then compiles an ATS-safe CV and cover letter (EN / SK) that you review and submit yourself.
 
-> Status: **Slice 0 skeleton is implemented.** Architecture decisions are recorded in
-> [docs/ADR.md](docs/ADR.md). Slices 1–5 are not built yet. This README remains the outline
-> the rest of the build follows.
+> Status: **Slice 1 is implemented** (Profesia ingestion, 2025/2026 salary engine, project
+> list and gross-to-net panel). Architecture decisions are recorded in
+> [docs/ADR.md](docs/ADR.md). Slices 2–5 are not built yet.
 
 ### Run the skeleton
 
@@ -32,8 +32,13 @@ or a `Tailscale-User-Login` header when the TCP peer is listed in
 `$SPARKY_DATA_DIR/credentials/` (mode 0600).
 
 ```bash
+export SPARKY_API_TOKEN=dev-token
+export SPARKY_API_BASE=http://127.0.0.1:8002
 cd frontend && npm install && npm run dev
 ```
+
+The projects screen calls the API through the Next.js server, which adds the bearer token.
+`GET /health` stays public. `POST /projects/ingest` returns a job; `POST /salary/net` is synchronous.
 
 On the Spark, `docker compose up --build` publishes the API on host port 8002
 (the container still listens on 8000; host port 8000 is left for Portainer), MCP on 8001, and the UI

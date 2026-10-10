@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import uuid
 from dataclasses import dataclass
 
@@ -60,7 +61,7 @@ def _loads_object(raw: str | None) -> dict[str, object] | None:
     return parsed
 
 
-def _row_to_job(row: object) -> JobRecord:
+def _row_to_job(row: sqlite3.Row) -> JobRecord:
     return JobRecord(
         id=str(row["id"]),
         type=str(row["type"]),
