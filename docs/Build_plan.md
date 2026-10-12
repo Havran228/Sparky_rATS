@@ -4,10 +4,10 @@ overview: Build Sparky_rATS on main in six vertical slices, each traceable to th
 todos:
   - id: slice0-skeleton
     content: "Slice 0 (ADR-001,003,004,005,012,013,014,018): docker-compose with ollama/backend/frontend; backend FastAPI scaffold with lifespan (single Qdrant client, watcher thread, job runner); numbered SQL migrations + schema_version; all tables from README domain model; jobs + SSE; Ollama role client with structured-output helper; Fernet secrets store + master.key bootstrap; Tailscale/bearer auth; .env.example; frontend Next.js standalone scaffold; health endpoint; pytest + ruff + CI workflow"
-    status: in_progress
+    status: completed
   - id: slice1-ingest-salary
     content: "Slice 1 (ADR-006,007,020): input classifier regexes; httpx JSON-LD scraper with raw HTML cache; Crawl4AI lazy fallback; JobPostingExtract schema + fast-role extraction; tax_params seed 2025/2026; salary_calc with Decimal and golden tests (FS example 6000 -> 1328.63); salary text parser; REST endpoints; project list/detail UI with gross-to-net panel (NCZD toggle, tax year)"
-    status: pending
+    status: in_progress
   - id: slice2-bundles-matching
     content: "Slice 2 (ADR-004,005,006,008,016,020): bundle CRUD + upload + inbox watcher jobs; Docling parsing with vision fallback; heading-aware chunking into document_chunks, FTS5, Qdrant; EN/SK alias dictionary with tests; lexical_report; hybrid retrieval with RRF; heavy-role traffic-light classification with citation verification; deterministic score with stored weights; candidate_profile skills-inventory proposal + confirm UI; evaluation UI; backend/evals harness with first cases"
     status: pending
