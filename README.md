@@ -9,9 +9,13 @@ down for recruiters. Sparky_rATS flips that: it ingests the job, compares it aga
 actually done, tells you where you pass, where you can bridge, and where you genuinely fall short,
 and then compiles an ATS-safe CV and cover letter (EN / SK) that you review and submit yourself.
 
-> Status: **Slice 0 skeleton is implemented.** Architecture decisions are recorded in
-> [docs/ADR.md](docs/ADR.md). Slices 1–5 are not built yet. This README remains the outline
+> Status: Active implementation.
+>  **Slice 0 skeleton is Verified  on Grace Blackwell hardware.** Architecture decisions are recorded in
+> [docs/ADR.md](docs/ADR.md).
+> Slice 1 ingestion & payroll engine is currently being tested on GB HW.
+> Slices 2–5 are not built yet. This README remains the outline
 > the rest of the build follows.
+
 
 ### Run the skeleton
 
