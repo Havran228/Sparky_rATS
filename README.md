@@ -9,10 +9,13 @@ down for recruiters. Sparky_rATS flips that: it ingests the job, compares it aga
 actually done, tells you where you pass, where you can bridge, and where you genuinely fall short,
 and then compiles an ATS-safe CV and cover letter (EN / SK) that you review and submit yourself.
 
-> Status: **Slice 3 is implemented on this branch** (profile-grounded CV and cover letters,
-> fixed Typst templates, sandboxed compile, PDF text round-trip, version diff, and
-> mark-as-submitted), stacked on Slices 1 and 2. It is not merged to `main` yet.
-> Architecture decisions are recorded in [docs/ADR.md](docs/ADR.md). Slices 4–5 are not built yet.
+> Status: Active implementation.
+> **Slice 0 skeleton is verified on Grace Blackwell hardware.** Architecture decisions are recorded in
+> [docs/ADR.md](docs/ADR.md).
+> Slices 1–3 are on `main`: Profesia ingestion, the 2025/2026 salary engine, bundles and cited matching,
+> then profile-grounded CVs and cover letters (Typst sandbox, PDF round-trip, version diff,
+> mark-as-submitted), project delete, and Docling in the backend image.
+> Slices 4–5 are not built yet.
 
 ### Run the skeleton
 
@@ -45,6 +48,8 @@ The UI calls the API through the Next.js server, which adds the bearer token.
 Bundles: `POST /bundles`, `POST /bundles/{id}/documents` (multipart), `POST /projects/{id}/evaluate`.
 Documents: `POST /projects/{id}/documents` (202 + job), `GET /documents/{id}/pdf`,
 `GET /documents/{id}/diff/{other_id}`, `POST /documents/{id}/submit`.
+`DELETE /projects/{id}` removes that posting, its matches, and its generated documents.
+Linked bundles stay.
 Text, Markdown, and HTML parse without extra packages. A local checkout needs
 `pip install 'sparky-rats[parse]'` before PDF and DOCX work. The backend image
 installs `.[dev,parse]`, so Docling is already in that container. Photos are

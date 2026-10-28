@@ -4,15 +4,15 @@ overview: Build Sparky_rATS on main in six vertical slices, each traceable to th
 todos:
   - id: slice0-skeleton
     content: "Slice 0 (ADR-001,003,004,005,012,013,014,018): docker-compose with ollama/backend/frontend; backend FastAPI scaffold with lifespan (single Qdrant client, watcher thread, job runner); numbered SQL migrations + schema_version; all tables from README domain model; jobs + SSE; Ollama role client with structured-output helper; Fernet secrets store + master.key bootstrap; Tailscale/bearer auth; .env.example; frontend Next.js standalone scaffold; health endpoint; pytest + ruff + CI workflow"
-    status: in_progress
+    status: completed
   - id: slice1-ingest-salary
     content: "Slice 1 (ADR-006,007,020): input classifier regexes; httpx JSON-LD scraper with raw HTML cache; Crawl4AI lazy fallback; JobPostingExtract schema + fast-role extraction; tax_params seed 2025/2026; salary_calc with Decimal and golden tests (FS example 6000 -> 1328.63); salary text parser; REST endpoints; project list/detail UI with gross-to-net panel (NCZD toggle, tax year)"
-    status: pending
+    status: completed
   - id: slice2-bundles-matching
     content: "Slice 2 (ADR-004,005,006,008,016,020): bundle CRUD + upload + inbox watcher jobs; Docling parsing with vision fallback; heading-aware chunking into document_chunks, FTS5, Qdrant; EN/SK alias dictionary with tests; lexical_report; hybrid retrieval with RRF; heavy-role traffic-light classification with citation verification; deterministic score with stored weights; candidate_profile skills-inventory proposal + confirm UI; evaluation UI; backend/evals harness with first cases"
     status: completed
   - id: slice3-generation
-    content: "Slice 3 (ADR-009,015,018): ResumeModel/CoverLetterModel schemas; versioned prompts with SK terminology rules; resume_en.typ, resume_sk.typ, cover_letter.typ reading sys.inputs; sandboxed typst compile with --root tmpdir and --font-path; pdftotext round-trip ATS check; generated_documents versioning, diff view, mark-as-submitted into active_application bundle; PDF preview"
+    content: "Slice 3 (ADR-009,015,018,024): ResumeModel/CoverLetterModel schemas; versioned prompts with SK terminology rules; resume_en.typ, resume_sk.typ, cover_letter.typ reading sys.inputs; sandboxed typst compile with --root tmpdir and --font-path; pdftotext round-trip ATS check; generated_documents versioning, diff view, mark-as-submitted into active_application bundle; PDF preview; DELETE /projects/{id}; backend image installs .[dev,parse] with libgl1 and libglib2.0-0"
     status: completed
   - id: slice4-timeline-google-tools
     content: "Slice 4 (ADR-010,011,013,017): project_stages CRUD + Kanban with derived current_status; Google OAuth (Workspace-Internal) flow, read-only client with transport hook + unit tests per branch, timeline per project, EMAIL_THREAD attach, clipboard staging buffer, revoke-and-wipe; tool registry with side_effects flag; Ollama tool-calling agent loop for project chat; FastMCP streamable-HTTP server on separate port with bearer auth; optional MCP client with per-tool whitelist UI"
@@ -148,6 +148,11 @@ content-addressed path under `/data/exports/`, `pdftotext`, re-run lexical match
 - `generated_documents` versioning; diff view at `content_json` level; mark-as-submitted copies
 into the project's `active_application` bundle.
 - UI: generate CV / cover letter (EN/SK), PDF preview, round-trip report, version history.
+- `DELETE /projects/{id}` on the list and the project page. Cascades matches and generated
+documents. Bundles stay, with the project link cleared. An export PDF is removed only when
+nothing else still references it.
+- The backend image installs `.[dev,parse]` plus `libgl1` and `libglib2.0-0` (ADR-024). CI
+stays without the parse extra.
 
 ## Slice 4 – Timeline, Google, tools and MCP (ADR-010, 011, 013, 017)
 
