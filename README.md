@@ -12,11 +12,12 @@ and then compiles an ATS-safe CV and cover letter (EN / SK) that you review and 
 > Status: Active implementation.
 > **Slice 0 skeleton is verified on Grace Blackwell hardware.** Architecture decisions are recorded in
 > [docs/ADR.md](docs/ADR.md).
-> Slices 1–3 are on `main`: Profesia ingestion, the 2025/2026 salary engine, bundles and cited matching,
-> then profile-grounded CVs and cover letters (Typst sandbox, PDF round-trip, version diff,
-> mark-as-submitted), project delete, and Docling in the backend image.
-> Slice 4 adds the stage board, a read-only Google timeline, the clipboard, project chat, and
-> FastMCP on port 8001. Slice 5 is not built yet.
+> Slices 1–4 are on `main`: Profesia ingestion, the 2025/2026 salary engine, bundles and cited matching,
+> profile-grounded CVs and cover letters, project delete, Docling in the backend image, the stage
+> board, a read-only Google timeline, project chat, and FastMCP on port 8001.
+> Slice 5 adds nightly backups, `scripts/benchmark_models.sh`, and [docs/runbook.md](docs/runbook.md).
+> Run the benchmark on the Spark before treating the role defaults as measured. ADR statuses stay
+> Proposed until that run is recorded and you accept it.
 
 ### Run the skeleton
 
@@ -60,7 +61,9 @@ the Inbox bundle. A repeated file hash is skipped before any model call.
 
 On the Spark, `docker compose up --build` publishes the API on host port 8002
 (the container still listens on 8000; host port 8000 is left for Portainer), MCP on 8001, and the UI
-on `SPARKY_BIND_HOST` (default `127.0.0.1`). It reserves the GPU for Ollama only. See `.env.example`.
+on `SPARKY_BIND_HOST` (default `127.0.0.1`). It reserves the GPU for Ollama only. A backup sidecar
+shares `/data`, publishes nothing, and runs at 03:15 Europe/Bratislava. See `.env.example` and
+[docs/runbook.md](docs/runbook.md).
 
 ---
 
@@ -160,8 +163,8 @@ flowchart LR
   Tools --> GOOG
 ```
 
-Three containers managed by Docker Compose: `ollama`, `backend`, `frontend`. All mutable state is on
-the host at `/mnt/data/sparky_rats`, mounted as `/data`.
+Docker Compose runs `ollama`, `backend`, and `frontend`, plus a backup sidecar with no ports and no
+GPU. All mutable state is on the host at `/mnt/data/sparky_rats`, mounted as `/data`.
 
 ## Technology stack
 
@@ -252,7 +255,8 @@ Initial tool set: `ingest_job`, `list_projects`, `get_project_details`, `query_k
 - **LLM-authored content.** Typst compiles inside a throwaway `--root`, so model output cannot read
   files from `/data`. All model JSON is schema-validated before use.
 - **Secrets.** Fernet-encrypted blobs in SQLite; master key at `/data/credentials/master.key` (0600).
-- **Backups.** Nightly `sqlite3 .backup` plus Qdrant snapshot to `/data/backups/`.
+- **Backups.** Nightly SQLite online backup plus a logical Qdrant snapshot under `/data/backups/`.
+  `credentials/master.key` is not in the archive; copy it separately. The procedure is in the runbook.
 
 ## Repository layout
 
@@ -263,7 +267,8 @@ Planned layout (created incrementally by the build slices):
 ├── README.md
 ├── docs/
 │   ├── ADR.md                      # architecture decision records
-│   └── runbook.md                  # operations (Slice 5)
+│   ├── benchmarks.md               # Spark measurements; empty until the script runs
+│   └── runbook.md                  # first start, tailnet, OAuth, backups, restore
 ├── docker-compose.yml
 ├── backend/
 │   ├── Dockerfile
@@ -293,6 +298,8 @@ Planned layout (created incrementally by the build slices):
 │   │   │   ├── profile.py          # skills inventory proposal and confirm merge
 │   │   │   ├── doc_generator.py    # JSON model -> Typst -> PDF -> round-trip check
 │   │   │   ├── google_client.py    # read-only client with transport interceptor
+│   │   │   ├── backup.py           # sqlite online backup and Qdrant point snapshot
+│   │   │   ├── benchmark_report.py # benchmark samples rendered to markdown
 │   │   │   └── watcher.py          # in-process inbox observer
 │   │   └── templates/
 │   │       ├── resume_en.typ
@@ -306,8 +313,11 @@ Planned layout (created incrementally by the build slices):
 │   ├── Dockerfile
 │   └── src/app/, src/components/
 └── scripts/
-    ├── benchmark_models.sh         # pick default models on the Spark
-    └── backup.sh
+    ├── benchmark_models.sh         # measure role candidates on the Spark
+    ├── backup.sh                   # sqlite backup, Qdrant snapshot, rotation
+    ├── backup-entry.sh             # compose schedule, 03:15 Europe/Bratislava
+    ├── restore.sh                  # stop the backend, then replace a backup
+    └── Dockerfile.backup           # sidecar image, no ports and no GPU
 ```
 
 ## Persistent data layout
@@ -320,8 +330,8 @@ Planned layout (created incrementally by the build slices):
 ├── bundles/                uploaded bundle files, plus _inbox and _raw
 ├── inbox/                  hot folder watched for ingestion
 ├── exports/                compiled PDFs
-├── credentials/            master.key (0600)
-└── backups/                nightly snapshots
+├── credentials/            master.key, api_token, mcp_token (0600, not inside backups)
+└── backups/                nightly UTC stamp directories; master.key is not copied
 ```
 
 ## Build roadmap
@@ -335,7 +345,7 @@ Vertical slices; each one leaves the system usable.
 | 2 | Bundle upload + inbox watcher, Docling/vision parsing, chunking, embeddings, FTS5, lexical + semantic evaluation, traffic-light UI, eval harness |
 | 3 | Candidate profile, resume/cover-letter models, Typst templates, sandboxed compile, round-trip ATS check, versioned documents, PDF preview |
 | 4 | Stages/Kanban, Google read-only client + interceptor tests, clipboard staging, tool registry, Ollama tool loop, FastMCP server, optional MCP client, project chat |
-| 5 | Backups, model benchmark on the Spark, runbook |
+| 5 | Backups, model benchmark script, runbook. Measure models on the Spark before accepting ADR-002 |
 
 ## Design documents
 

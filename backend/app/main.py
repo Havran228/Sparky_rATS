@@ -26,6 +26,7 @@ from app.routes.bundles import install_bundle_routes
 from app.routes.chat import install_chat_routes
 from app.routes.documents import install_document_routes
 from app.routes.google import install_google_routes
+from app.routes.maintenance import install_maintenance_routes
 from app.routes.matching import install_matching_routes
 from app.routes.mcp_settings import install_mcp_settings_routes
 from app.routes.projects import install_project_routes
@@ -133,6 +134,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_document_routes(app)
     install_stage_routes(app)
     install_google_routes(app)
+    install_maintenance_routes(app)
     install_chat_routes(app)
     install_mcp_settings_routes(app)
     return app

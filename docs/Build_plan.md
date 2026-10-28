@@ -1,5 +1,5 @@
 ---
-name: Sparky_rATS Build Plan (aligned to README and ADR-001..020)
+name: Sparky_rATS Build Plan (aligned to README and ADR-001..026)
 overview: Build Sparky_rATS on main in six vertical slices, each traceable to the decisions recorded in docs/ADR.md and the outline in README.md. Every slice ends with a usable system, a passing test suite, and a commit on main (via a cursor/<slice>-851a branch and PR).
 todos:
   - id: slice0-skeleton
@@ -18,8 +18,8 @@ todos:
     content: "Slice 4 (ADR-010,011,013,017): project_stages CRUD + Kanban with derived current_status; Google OAuth (Workspace-Internal) flow, read-only client with transport hook + unit tests per branch, timeline per project, EMAIL_THREAD attach, clipboard staging buffer, revoke-and-wipe; tool registry with side_effects flag; Ollama tool-calling agent loop for project chat; FastMCP streamable-HTTP server on separate port with bearer auth; optional MCP client with per-tool whitelist UI"
     status: completed
   - id: slice5-hardening
-    content: "Slice 5 (ADR-002,012,019,020): scripts/benchmark_models.sh on the Spark and set role defaults; scripts/backup.sh (sqlite .backup + qdrant snapshot + master.key reminder) with compose cron; docs/runbook.md (tailnet ACLs, OAuth setup, restore); flip ADR statuses to Accepted with results recorded"
-    status: pending
+    content: "Slice 5 (ADR-002,012,019,020,026): benchmark script and docs/benchmarks.md; backup.sh plus a no-port compose sidecar; logical Qdrant snapshot because local mode has no snapshot API; runbook; ADR statuses stay Proposed until a Spark benchmark is recorded and the owner accepts them (ADR-026)"
+    status: completed
 isProject: false
 ---
 
@@ -174,13 +174,20 @@ per-tool whitelist in settings before the agent loop may call them.
 - ADR-025 records the Kanban column model, the UI OAuth callback, the in-memory clipboard, and
 the external-tool whitelist.
 
-## Slice 5 – Hardening (ADR-002, 012, 019, 020)
+## Slice 5 – Hardening (ADR-002, 012, 019, 020, 026)
 
-- `scripts/benchmark_models.sh`: pull candidates, measure decode tok/s and TTFT at 8k/32k on the
-Spark, write results to `docs/benchmarks.md`; set role defaults in config accordingly.
-- `scripts/backup.sh`: nightly `sqlite3 .backup`, Qdrant snapshot, rotation under
-`/data/backups/`; runbook states that `master.key` must be backed up separately.
-- `docs/runbook.md`: first start, tailnet ACLs, Google OAuth app setup, n8n MCP connection,
-restore procedure, model swap procedure.
-- Flip ADR statuses from Proposed to Accepted, recording benchmark and eval results in the log.
+- `scripts/benchmark_models.sh`: pull the ADR-002 candidates, measure decode tok/s and TTFT at
+  8k/32k, and write `docs/benchmarks.md`. The script does not edit `config.py`. Suggested
+  `SPARKY_MODEL_*` lines are for `.env` after a real Spark run. `docs/benchmarks.md` stays the
+  unrun page until Ollama answers.
+- `scripts/backup.sh` and a compose `backup` sidecar with no ports and no GPU. SQLite uses the
+  online `.backup` API. Qdrant is a logical point snapshot from the backend, because local mode
+  has no snapshot API (ADR-026). A direct copy runs only when the store is unlocked. Rotation
+  keeps 14 days of UTC stamp directories. `master.key` is never copied.
+- `docs/runbook.md`: first start, tailnet ACLs, Google OAuth, n8n MCP, backup, restore, and
+  model swap.
+- ADR statuses stay Proposed. Acceptance is an owner action after the Spark benchmark, recorded
+  as a new ADR rather than invented measurements in this slice. The offline harness
+  (`python -m evals`, model `offline-lexical`, prompt `classify_match_v1`) agrees 1.0 on the two
+  committed cases. That is not a heavy-model result.
 
