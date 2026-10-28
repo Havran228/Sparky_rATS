@@ -1,0 +1,9 @@
+Classify each requirement against the retrieved bundle chunks.
+GREEN means the chunks show the candidate has done this.
+YELLOW means a neighbouring skill is evidenced and the gap is bridgeable.
+RED means the chunks do not show it.
+Every GREEN item must include chunk_ids copied from the retrieved chunks for that requirement.
+Do not cite an id that was not retrieved. Do not invent experience.
+Owner-confirmed skills are context only and are not citations.
+Write each rationale in one or two sentences.
+Return one item per requirement and copy the requirement term exactly.

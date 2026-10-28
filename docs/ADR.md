@@ -35,6 +35,8 @@ Status values: `Proposed` (awaiting owner sign-off), `Accepted`, `Superseded by 
 | [ADR-018](#adr-018) | LLM output discipline: structured outputs validated by Pydantic everywhere | Proposed |
 | [ADR-019](#adr-019) | Delivery strategy: vertical slices, usable after the first | Proposed |
 | [ADR-020](#adr-020) | Testing and evaluation: golden tests, fixtures, and a prompt evaluation harness | Proposed |
+| [ADR-021](#adr-021) | Missing JSON-LD is parsed from HTML; Crawl4AI stays optional | Proposed |
+| [ADR-022](#adr-022) | PDF and DOCX parsing is an optional Docling extra | Proposed |
 
 ---
 
@@ -806,3 +808,67 @@ area is live and fragile (scraping), and two are probabilistic (extraction, clas
 
 - Changing a prompt or a model default requires re-running the harness and recording the result
   in the commit message.
+
+---
+
+## ADR-021
+
+### Missing JSON-LD is parsed from HTML; Crawl4AI stays optional
+
+**Status:** Proposed
+**Refines:** ADR-006 item 3 (headless fallback on missing JSON-LD).
+
+#### Context
+
+On the Spark, a normal Profesia response sometimes has no Schema.org `JobPosting` block.
+The fetch then required Crawl4AI, which is not installed, and the ingest job failed with
+`FallbackUnavailable`. A headless browser is still the wrong tool for a page that already
+returned HTML.
+
+#### Decision
+
+- The httpx client sends a current desktop browser `User-Agent` and `Accept-Language: sk,cs,en`.
+- When the response is readable and JSON-LD is missing, BeautifulSoup (lxml) reads the title,
+  employer, salary text, and description, and turns the description into markdown.
+- Crawl4AI runs only after 403, 503, or a bot challenge. If it is not installed, ingestion
+  continues with the HTML parse instead of failing.
+
+#### Consequences
+
+- A posting without JSON-LD still becomes a project.
+- Chromium is not required for the common path.
+
+---
+
+## ADR-022
+
+### PDF and DOCX parsing is an optional Docling extra
+
+**Status:** Proposed
+**Refines:** ADR-006 item 4 (Docling for PDF/DOCX, vision role below a text threshold).
+
+#### Context
+
+Docling pulls in Torch. Installing it in the default image and in CI would make every
+backend change rebuild a multi-gigabyte environment, and the common uploads for this
+slice are Markdown, plain text, and HTML. Image-only inputs still need the vision role.
+PDF and DOCX remain the right Docling job when the owner actually has them.
+
+#### Decision
+
+- Text, Markdown, and HTML are parsed in process, with heading-aware chunks of about 400
+  whitespace tokens.
+- PDF and DOCX call Docling only when the `parse` extra is installed
+  (`pip install 'sparky-rats[parse]'`). If it is missing, the ingest job fails with that
+  install hint instead of silently dropping the file.
+- Image uploads, and only image uploads on this path, are sent to the vision role as a
+  structured transcript. A transcript that fails the schema fails the job.
+- Embeddings are best-effort. If the embed role is unreachable, the chunks still land in
+  SQLite and FTS5 and the job result says `embedded: false`. Dense retrieval is skipped
+  for that document until it is re-ingested.
+
+#### Consequences
+
+- CI and the default image stay free of Torch.
+- A CV that is only a PDF does not become searchable until the parse extra is installed.
+- Lexical matching still runs when Ollama is down, as long as the text was extracted.

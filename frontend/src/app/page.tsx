@@ -3,15 +3,15 @@ import { HealthPanel } from "@/components/HealthPanel";
 const LOOPS = [
   {
     title: "Target job",
-    detail: "Profesia link, id, PDF, or photo becomes a project. Slice 1.",
+    detail: "Paste a Profesia link or posting on Projects. The fast model structures it.",
   },
   {
     title: "Knowledge bundles",
-    detail: "Your documents stay the only source of truth. Slice 2.",
+    detail: "Upload CVs and notes, or drop files in the inbox. They are the only evidence.",
   },
   {
     title: "Match",
-    detail: "Lexical ATS pass, then a cited traffic-light report. Slice 2.",
+    detail: "Open a project, pick bundles, and read the cited traffic lights.",
   },
   {
     title: "Documents",
@@ -26,11 +26,12 @@ const LOOPS = [
 export default function HomePage() {
   return (
     <div className="max-w-3xl">
-      <p className="text-xs uppercase tracking-[0.18em] text-spark">Slice 0</p>
-      <h1 className="mt-2 font-serif text-4xl tracking-tight">The shell is up.</h1>
+      <p className="text-xs uppercase tracking-[0.18em] text-spark">Slice 2</p>
+      <h1 className="mt-2 font-serif text-4xl tracking-tight">Match against what you have done.</h1>
       <p className="mt-3 max-w-xl text-base leading-7 text-muted">
-        Sparky_rATS runs on this machine. This slice is the database, job runner, local model
-        client, and sign-in boundary. Ingestion and matching are not wired yet.
+        Ingest a posting, keep your history in bundles, and run a cited traffic-light evaluation.
+        The score is computed here. The model does not invent a number, and a green claim needs a
+        chunk from your bundles.
       </p>
       <div className="mt-8">
         <HealthPanel />

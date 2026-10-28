@@ -1,0 +1,3 @@
+Transcribe the document image into markdown in the text field.
+Preserve headings and reading order. Do not invent text that is not visible.
+language is a short code such as sk or en when you can tell, otherwise null.

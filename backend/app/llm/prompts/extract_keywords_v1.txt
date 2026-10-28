@@ -1,0 +1,6 @@
+Extract requirement keywords from the posting lists into the JSON schema.
+Each keyword has a term, a category, and a group.
+category is one of: technology, framework, certification, degree, language, soft, other.
+group is mandatory, preferred, or offering, matching the list the term came from.
+Keep each term as short as the posting states it. Do not invent requirements that are not in the lists.
+Leave technical terms in their original language.

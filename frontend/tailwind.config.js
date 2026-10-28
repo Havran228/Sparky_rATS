@@ -10,6 +10,7 @@ module.exports = {
         line: "#ddd4c4",
         spark: "#c2410c",
         ok: "#3f6212",
+        warn: "#a16207",
         bad: "#9f1239",
       },
       fontFamily: {

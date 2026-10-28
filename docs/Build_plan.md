@@ -7,10 +7,10 @@ todos:
     status: completed
   - id: slice1-ingest-salary
     content: "Slice 1 (ADR-006,007,020): input classifier regexes; httpx JSON-LD scraper with raw HTML cache; Crawl4AI lazy fallback; JobPostingExtract schema + fast-role extraction; tax_params seed 2025/2026; salary_calc with Decimal and golden tests (FS example 6000 -> 1328.63); salary text parser; REST endpoints; project list/detail UI with gross-to-net panel (NCZD toggle, tax year)"
-    status: in_progress
+    status: completed
   - id: slice2-bundles-matching
     content: "Slice 2 (ADR-004,005,006,008,016,020): bundle CRUD + upload + inbox watcher jobs; Docling parsing with vision fallback; heading-aware chunking into document_chunks, FTS5, Qdrant; EN/SK alias dictionary with tests; lexical_report; hybrid retrieval with RRF; heavy-role traffic-light classification with citation verification; deterministic score with stored weights; candidate_profile skills-inventory proposal + confirm UI; evaluation UI; backend/evals harness with first cases"
-    status: pending
+    status: completed
   - id: slice3-generation
     content: "Slice 3 (ADR-009,015,018): ResumeModel/CoverLetterModel schemas; versioned prompts with SK terminology rules; resume_en.typ, resume_sk.typ, cover_letter.typ reading sys.inputs; sandboxed typst compile with --root tmpdir and --font-path; pdftotext round-trip ATS check; generated_documents versioning, diff view, mark-as-submitted into active_application bundle; PDF preview"
     status: pending

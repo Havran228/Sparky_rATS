@@ -1,0 +1,17 @@
+{
+  "id": "slovak-language",
+  "mandatory": ["Angličtina"],
+  "preferred": [],
+  "offerings": [],
+  "documents": [
+    {
+      "filename": "languages.md",
+      "doc_type": "CV",
+      "text": "# Languages\n\nEnglish C1, used daily with product and support teams.\n"
+    }
+  ],
+  "expected": {
+    "Angličtina": "GREEN"
+  },
+  "expected_hazards": []
+}

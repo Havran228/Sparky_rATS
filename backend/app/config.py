@@ -41,6 +41,15 @@ class Settings(BaseSettings):
     cors_origins: str = "http://127.0.0.1:3000,http://localhost:3000"
 
     general_job_concurrency: int = 4
+    chunk_target_tokens: int = 400
+    vision_min_chars: int = 40
+    retrieval_top_k: int = 8
+    rrf_k: int = 60
+    score_weight_mandatory: float = 0.6
+    score_weight_preferred: float = 0.3
+    score_weight_offerings: float = 0.1
+    inbox_debounce_seconds: float = 1.0
+    inbox_bundle_name: str = "Inbox"
 
     @field_validator("api_token", "mcp_token", "master_key", mode="before")
     @classmethod
@@ -68,6 +77,21 @@ class Settings(BaseSettings):
     @property
     def inbox_dir(self) -> Path:
         return self.data_dir / "inbox"
+
+    @property
+    def bundles_dir(self) -> Path:
+        return self.data_dir / "bundles"
+
+    @property
+    def inbox_staging_dir(self) -> Path:
+        return self.bundles_dir / "_inbox"
+
+    def score_weights(self) -> dict[str, float]:
+        return {
+            "mandatory": self.score_weight_mandatory,
+            "preferred": self.score_weight_preferred,
+            "offerings": self.score_weight_offerings,
+        }
 
     def proxy_hosts(self) -> set[str]:
         return {host.strip() for host in self.tailscale_proxy_hosts.split(",") if host.strip()}

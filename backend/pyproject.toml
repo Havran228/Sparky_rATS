@@ -4,11 +4,14 @@ version = "0.1.0"
 description = "Sparky_rATS backend: local reverse ATS"
 requires-python = ">=3.12"
 dependencies = [
+    "beautifulsoup4>=4.12.0",
     "cryptography>=44.0.0",
     "fastapi>=0.115.6",
     "httpx>=0.28.1",
+    "lxml>=5.0.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
+    "python-multipart>=0.0.20",
     "qdrant-client>=1.13.0",
     "uvicorn[standard]>=0.34.0",
     "watchdog>=6.0.0",
@@ -21,6 +24,9 @@ dev = [
     "pytest-asyncio>=0.25.0",
     "ruff>=0.9.0",
 ]
+parse = [
+    "docling>=2.15.0",
+]
 
 [build-system]
 requires = ["setuptools>=75"]
@@ -31,7 +37,7 @@ where = ["."]
 include = ["app*"]
 
 [tool.setuptools.package-data]
-app = ["db/migrations/*.sql"]
+app = ["db/migrations/*.sql", "llm/prompts/*.txt", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -57,3 +63,7 @@ mypy_path = "."
 [[tool.mypy.overrides]]
 module = "app.services.*"
 strict = true
+
+[[tool.mypy.overrides]]
+module = "app.docling_convert"
+ignore_errors = true

@@ -1,0 +1,29 @@
+{
+  "version": "aliases_v1",
+  "entries": [
+    {"canonical": "Kubernetes", "aliases": ["K8s", "Kubernetesom", "Kubernetu", "Kubernetese"]},
+    {"canonical": "Amazon Web Services", "aliases": ["AWS"]},
+    {"canonical": "Google Cloud Platform", "aliases": ["GCP", "Google Cloud"]},
+    {"canonical": "Microsoft Azure", "aliases": ["Azure"]},
+    {"canonical": "Python", "aliases": ["Pythonu", "Pythonom"]},
+    {"canonical": "Java", "aliases": ["Javy", "Javou"]},
+    {"canonical": "JavaScript", "aliases": ["JS", "Javascript"]},
+    {"canonical": "TypeScript", "aliases": ["TS"]},
+    {"canonical": "PostgreSQL", "aliases": ["Postgres", "PostgreSQLu"]},
+    {"canonical": "Docker", "aliases": ["Dockerom"]},
+    {"canonical": "Terraform", "aliases": ["Terraformu"]},
+    {"canonical": "Linux", "aliases": ["Linuxom"]},
+    {"canonical": "Go", "aliases": ["Golang"]},
+    {"canonical": "C#", "aliases": ["CSharp", "C Sharp"]},
+    {"canonical": "C++", "aliases": ["CPP", "C plus plus"]},
+    {"canonical": "React", "aliases": ["React.js", "ReactJS"]},
+    {"canonical": "Node.js", "aliases": ["NodeJS", "Node.js"]},
+    {"canonical": "CI/CD", "aliases": ["CICD", "Continuous Integration"]},
+    {"canonical": "Machine Learning", "aliases": ["ML", "Strojové učenie", "Strojove ucenie"]},
+    {"canonical": "English", "aliases": ["Angličtina", "Anglictina", "Angličtine", "Anglictine"]},
+    {"canonical": "German", "aliases": ["Nemčina", "Nemcina", "Deutsch"]},
+    {"canonical": "Slovak", "aliases": ["Slovenčina", "Slovencina"]},
+    {"canonical": "Bachelor", "aliases": ["Bc.", "Bakalár", "Bakalar"]},
+    {"canonical": "Master", "aliases": ["Ing.", "Mgr.", "Magister"]}
+  ]
+}

@@ -91,3 +91,19 @@ async def test_health_reads_loaded_models(settings) -> None:
         health = await client.health()
     assert health.ok is True
     assert health.loaded_models == ["bge-m3:latest"]
+
+
+@pytest.mark.asyncio
+async def test_embed_returns_one_vector_per_input(settings) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content.decode())
+        assert request.url.path == "/api/embed"
+        assert body["model"] == settings.model_embed
+        assert body["input"] == ["kubernetes", "python"]
+        return httpx.Response(200, json={"embeddings": [[0.1, 0.2], [0.3, 0.4]]})
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport, base_url="http://ollama") as http:
+        client = OllamaClient(settings, http=http)
+        vectors = await client.embed(["kubernetes", "python"])
+    assert vectors == [[0.1, 0.2], [0.3, 0.4]]
