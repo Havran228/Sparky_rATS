@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     pdftotext_bin: str = "pdftotext"
     font_dir: str | None = None
     letter_timezone: str = "Europe/Bratislava"
+    google_redirect_uri: str = "http://127.0.0.1:3000/settings/google/callback"
+    google_lookback_days: int = 90
+    chat_tool_rounds: int = 4
     tailscale_proxy_hosts: str = "127.0.0.1,::1"
     cors_origins: str = "http://127.0.0.1:3000,http://localhost:3000"
 

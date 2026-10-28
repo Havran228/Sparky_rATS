@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 
+import { Kanban } from "@/components/Kanban";
 import { deleteProject, getJob, listProjects, startIngest, type Project } from "@/lib/projects";
 
 export function ProjectsBoard() {
+  const [view, setView] = useState<"list" | "board">("list");
   const [projects, setProjects] = useState<Project[]>([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -57,8 +59,26 @@ export function ProjectsBoard() {
   }
 
   return (
-    <div className="max-w-3xl">
-      <h1 className="font-serif text-3xl">Projects</h1>
+    <div className={view === "board" ? "" : "max-w-3xl"}>
+      <div className="flex items-end justify-between gap-3">
+        <h1 className="font-serif text-3xl">Projects</h1>
+        <div className="flex gap-2 text-sm">
+          <button
+            type="button"
+            onClick={() => setView("list")}
+            className={view === "list" ? "text-spark" : "text-muted"}
+          >
+            List
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("board")}
+            className={view === "board" ? "text-spark" : "text-muted"}
+          >
+            Board
+          </button>
+        </div>
+      </div>
       <p className="mt-2 text-sm leading-6 text-muted">
         Paste a Profesia link, a seven-digit id, or the posting text. The fast model turns it into
         a project. CVs and photos go into a knowledge bundle, not this bar.
@@ -81,6 +101,12 @@ export function ProjectsBoard() {
       </form>
       {status ? <p className="mt-2 text-sm text-muted">{status}</p> : null}
       {error ? <p className="mt-2 text-sm text-bad">{error}</p> : null}
+      {view === "board" ? (
+        <div className="mt-8">
+          <Kanban />
+        </div>
+      ) : null}
+      {view === "list" ? (
       <ul className="mt-8 divide-y divide-line border border-line bg-white/50">
         {projects.length === 0 ? (
           <li className="px-4 py-6 text-sm text-muted">No projects yet.</li>
@@ -90,7 +116,7 @@ export function ProjectsBoard() {
               <Link href={`/projects/${project.id}`} className="min-w-0 flex-1 hover:opacity-80">
                 <span className="font-serif text-lg">{project.title || "Untitled posting"}</span>
                 <span className="mt-1 block text-sm text-muted">
-                  {[project.company, project.contract_type, salaryLabel(project)]
+                  {[project.company, project.contract_type, project.current_status, salaryLabel(project)]
                     .filter(Boolean)
                     .join(" · ")}
                 </span>
@@ -107,6 +133,7 @@ export function ProjectsBoard() {
           ))
         )}
       </ul>
+      ) : null}
     </div>
   );
 }

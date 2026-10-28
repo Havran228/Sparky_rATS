@@ -15,7 +15,8 @@ and then compiles an ATS-safe CV and cover letter (EN / SK) that you review and 
 > Slices 1–3 are on `main`: Profesia ingestion, the 2025/2026 salary engine, bundles and cited matching,
 > then profile-grounded CVs and cover letters (Typst sandbox, PDF round-trip, version diff,
 > mark-as-submitted), project delete, and Docling in the backend image.
-> Slices 4–5 are not built yet.
+> Slice 4 adds the stage board, a read-only Google timeline, the clipboard, project chat, and
+> FastMCP on port 8001. Slice 5 is not built yet.
 
 ### Run the skeleton
 
@@ -31,8 +32,8 @@ uvicorn app.main:app --host 127.0.0.1 --port 8002
 
 `GET /health` is open. Every other API route needs `Authorization: Bearer $SPARKY_API_TOKEN`,
 or a `Tailscale-User-Login` header when the TCP peer is listed in
-`SPARKY_TAILSCALE_PROXY_HOSTS`. The MCP placeholder listens on port 8001 and accepts only
-`SPARKY_MCP_TOKEN`. If a token is unset, the backend generates one and writes it under
+`SPARKY_TAILSCALE_PROXY_HOSTS`. The MCP server listens on port 8001, speaks streamable HTTP
+at `/mcp`, and accepts only `SPARKY_MCP_TOKEN`. If a token is unset, the backend generates one and writes it under
 `$SPARKY_DATA_DIR/credentials/` (mode 0600).
 
 ```bash

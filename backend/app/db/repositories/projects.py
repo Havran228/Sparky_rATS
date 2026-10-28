@@ -109,6 +109,9 @@ class ProjectRepository:
                 now,
             ),
         )
+        from app.db.repositories.stages import StageRepository
+
+        StageRepository(self._db).seed_defaults(project_id)
         saved = self.get(project_id)
         if saved is None:
             raise RuntimeError("inserted project disappeared")

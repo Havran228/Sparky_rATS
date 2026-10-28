@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from enum import StrEnum
 from typing import TypeVar
@@ -35,6 +36,16 @@ class OllamaHealth(BaseModel):
     ok: bool
     loaded_models: list[str] = []
     detail: str | None = None
+
+
+class ToolCall(BaseModel):
+    name: str
+    arguments: dict[str, object] = {}
+
+
+class ChatTurn(BaseModel):
+    content: str
+    tool_calls: list[ToolCall] = []
 
 
 class OllamaClient:
@@ -146,6 +157,38 @@ class OllamaClient:
                 )
         raise StructuredOutputError(last_error)
 
+    async def chat(
+        self,
+        role: ModelRole,
+        messages: list[dict[str, object]],
+        *,
+        tools: list[dict[str, object]] | None = None,
+    ) -> ChatTurn:
+        """Free-form chat. Tool calls are returned; this method does not execute them."""
+        payload: dict[str, object] = {
+            "model": self.model_name(role),
+            "messages": messages,
+            "stream": False,
+            "keep_alive": self._keep_alive[role],
+            "options": {"temperature": 0},
+        }
+        if tools:
+            payload["tools"] = tools
+        try:
+            response = await self._http.post("/api/chat", json=payload)
+            response.raise_for_status()
+        except Exception as exc:
+            raise OllamaError(f"{type(exc).__name__}: {exc}") from exc
+        body = response.json()
+        message = body.get("message") if isinstance(body, dict) else None
+        if not isinstance(message, dict):
+            raise OllamaError("Ollama response did not include a message")
+        content = message.get("content")
+        return ChatTurn(
+            content=content if isinstance(content, str) else "",
+            tool_calls=_tool_calls(message.get("tool_calls")),
+        )
+
     async def _chat(
         self,
         role: ModelRole,
@@ -173,3 +216,28 @@ class OllamaClient:
         if not isinstance(content, str):
             raise OllamaError("Ollama response did not include message content")
         return content
+
+
+def _tool_calls(raw: object) -> list[ToolCall]:
+    if not isinstance(raw, list):
+        return []
+    calls: list[ToolCall] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        function = item.get("function")
+        if not isinstance(function, dict):
+            continue
+        name = function.get("name")
+        if not isinstance(name, str) or not name:
+            continue
+        arguments = function.get("arguments")
+        parsed: dict[str, object] = {}
+        if isinstance(arguments, dict):
+            parsed = {str(key): value for key, value in arguments.items()}
+        elif isinstance(arguments, str) and arguments.strip():
+            loaded = json.loads(arguments)
+            if isinstance(loaded, dict):
+                parsed = {str(key): value for key, value in loaded.items()}
+        calls.append(ToolCall(name=name, arguments=parsed))
+    return calls

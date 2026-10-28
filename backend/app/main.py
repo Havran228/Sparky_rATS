@@ -23,15 +23,23 @@ from app.jobs import JobRunner, format_sse
 from app.llm.ollama_client import OllamaClient, OllamaHealth
 from app.mcp_server import create_mcp_app
 from app.routes.bundles import install_bundle_routes
+from app.routes.chat import install_chat_routes
 from app.routes.documents import install_document_routes
+from app.routes.google import install_google_routes
 from app.routes.matching import install_matching_routes
+from app.routes.mcp_settings import install_mcp_settings_routes
 from app.routes.projects import install_project_routes
+from app.routes.stages import install_stage_routes
+from app.runtime import Runtime
 from app.secrets_store import SecretsStore, ensure_bearer, load_fernet
 from app.services.bundle_ingest import register_bundle_handler
+from app.services.chat import register_chat_handler
 from app.services.doc_generator import register_document_handlers
 from app.services.evaluator import register_evaluation_handler
+from app.services.google_client import GoogleClient
 from app.services.ingest import register_ingest_handler
 from app.services.profile import register_profile_handler
+from app.services.staging import StagingBuffer
 from app.services.watcher import InboxWatcher
 from app.vector_store import VectorStore
 
@@ -123,6 +131,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_bundle_routes(app)
     install_matching_routes(app)
     install_document_routes(app)
+    install_stage_routes(app)
+    install_google_routes(app)
+    install_chat_routes(app)
+    install_mcp_settings_routes(app)
     return app
 
 
@@ -187,6 +199,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     vectors: VectorStore | None = None
     watcher = InboxWatcher(settings.inbox_dir)
     ollama: OllamaClient | None = None
+    google: GoogleClient | None = None
     runner: JobRunner | None = None
     runner_task: asyncio.Task[None] | None = None
     mcp_server: uvicorn.Server | None = None
@@ -224,6 +237,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         register_evaluation_handler(runner, db, ollama, vectors, settings)
         register_profile_handler(runner, db, ollama)
         register_document_handlers(runner, db, ollama, vectors, settings)
+        google = GoogleClient(settings, secrets)
+        runtime = Runtime(
+            settings=settings,
+            db=db,
+            ollama=ollama,
+            vectors=vectors,
+            jobs=runner,
+            secrets=secrets,
+            staging=StagingBuffer(),
+            google=google,
+        )
+        app.state.runtime = runtime
+        register_chat_handler(runner, runtime)
         app.state.job_runner = runner
         watcher = InboxWatcher(
             settings.inbox_dir,
@@ -243,7 +269,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if settings.enable_watcher:
             watcher.start()
         if settings.enable_mcp_server:
-            mcp_server, mcp_task = _start_mcp(settings, app.state.mcp_token)
+            mcp_server, mcp_task = _start_mcp(settings, app.state.mcp_token, runtime)
             app.state.mcp_server = mcp_server
         runner_task = asyncio.create_task(runner.loop())
         yield
@@ -260,6 +286,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             with suppress(asyncio.CancelledError, Exception):
                 await mcp_task
         watcher.stop()
+        if google is not None:
+            await google.aclose()
         if ollama is not None:
             await ollama.aclose()
         if vectors is not None:
@@ -267,10 +295,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         db.close()
 
 
-def _start_mcp(settings: Settings, mcp_token: str) -> tuple[uvicorn.Server, asyncio.Task[None]]:
+def _start_mcp(
+    settings: Settings,
+    mcp_token: str,
+    runtime: Runtime,
+) -> tuple[uvicorn.Server, asyncio.Task[None]]:
     server = uvicorn.Server(
         uvicorn.Config(
-            create_mcp_app(mcp_token),
+            create_mcp_app(mcp_token, runtime),
             host=settings.api_host,
             port=settings.mcp_port,
             log_level="warning",

@@ -39,6 +39,7 @@ Status values: `Proposed` (awaiting owner sign-off), `Accepted`, `Superseded by 
 | [ADR-022](#adr-022) | PDF and DOCX parsing is an optional Docling extra | Proposed |
 | [ADR-023](#adr-023) | Generation is grounded on the confirmed profile and compiles from a file inside the sandbox | Proposed |
 | [ADR-024](#adr-024) | The backend image installs the Docling parse extra | Proposed |
+| [ADR-025](#adr-025) | Kanban writes stages, and the Google callback stays on the UI | Proposed |
 
 ---
 
@@ -956,3 +957,47 @@ that parser present on every start, including on the Spark where a later pip ins
 - A backend image rebuild downloads Torch and is much larger.
 - `from docling.document_converter import DocumentConverter` works in the container.
 - A checkout outside Docker still needs `pip install 'sparky-rats[parse]'` for PDF and DOCX.
+
+---
+
+## ADR-025
+
+### Kanban writes stages, and the Google callback stays on the UI
+
+**Status:** Proposed
+**Refines:** ADR-011 (where the OAuth redirect lands) and ADR-017 (how a stage becomes the
+cached project status).
+
+#### Context
+
+`project_stages` already had a `status` column, and `projects.current_status` was documented as
+a cache, but nothing said which write the Kanban performs. A Google redirect cannot hit a bearer-
+protected API: the browser arrives without the Sparky token. External MCP servers also need a
+place to store a URL that is not secret and a bearer that is.
+
+#### Decision
+
+- `project_stages.status` is the pipeline code (`NEW`, `CV_DRAFT`, `SUBMITTED`, `SCREENING`,
+  `INTERVIEW`, `OFFER`, or a custom uppercase code). `progress` is `PENDING`, `CURRENT`, `DONE`,
+  or a terminal code (`ON_HOLD`, `REJECTED`, `WITHDRAWN`, `GHOSTED`).
+- `derive_status` reads those rows. A terminal progress outranks an open stage. The service
+  writes the result into `projects.current_status`. No API accepts that column as input.
+- Moving a Kanban card calls `POST /projects/{id}/move` with a column code. That updates stage
+  progress and then the cache.
+- The OAuth redirect URI is the Next.js page `/settings/google/callback`. That page posts the
+  code and the single-use state to an authenticated exchange route. The state is a Fernet blob.
+- Clipboard drafts live in process memory. A restart drops them. They are not credentials and
+  they are not sent.
+- An attached Gmail message is a bundle document of type `EMAIL_THREAD`.
+- External MCP server URLs live in SQLite. Their bearer tokens live in `system_credentials`.
+  Discovered tools start with `whitelisted = 0`. The chat loop may call one only after that flag
+  is set. Every external tool is treated as having side effects.
+- FastMCP serves streamable HTTP at `/mcp` on the MCP port. Responses use JSON bodies. The only
+  accepted credential on that port is the MCP bearer.
+
+#### Consequences
+
+- A project created before this slice, with no stage rows, is given the default pipeline the
+  first time stages are read, and its cached status becomes `NEW`.
+- The Google Cloud redirect URI has to be the UI origin, not the API origin.
+- n8n's MCP Client Tool node uses `http://<tailscale-host>:8001/mcp` and `SPARKY_MCP_TOKEN`.

@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: slice4-timeline-google-tools
     content: "Slice 4 (ADR-010,011,013,017): project_stages CRUD + Kanban with derived current_status; Google OAuth (Workspace-Internal) flow, read-only client with transport hook + unit tests per branch, timeline per project, EMAIL_THREAD attach, clipboard staging buffer, revoke-and-wipe; tool registry with side_effects flag; Ollama tool-calling agent loop for project chat; FastMCP streamable-HTTP server on separate port with bearer auth; optional MCP client with per-tool whitelist UI"
-    status: pending
+    status: completed
   - id: slice5-hardening
     content: "Slice 5 (ADR-002,012,019,020): scripts/benchmark_models.sh on the Spark and set role defaults; scripts/backup.sh (sqlite .backup + qdrant snapshot + master.key reminder) with compose cron; docs/runbook.md (tailnet ACLs, OAuth setup, restore); flip ADR statuses to Accepted with results recorded"
     status: pending
@@ -171,6 +171,8 @@ params/results and a `side_effects` flag.
 test with an MCP client; n8n MCP Client Tool node documented in the runbook.
 - `mcp_client.py` (optional): register external MCP servers; discovered tools disabled by default;
 per-tool whitelist in settings before the agent loop may call them.
+- ADR-025 records the Kanban column model, the UI OAuth callback, the in-memory clipboard, and
+the external-tool whitelist.
 
 ## Slice 5 – Hardening (ADR-002, 012, 019, 020)
 

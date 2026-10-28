@@ -10,7 +10,15 @@ from app.clock import utc_now
 from app.db.database import Database
 
 DOC_TYPES = frozenset(
-    {"CV", "COVER_LETTER", "JOB_POSTING", "CORRESPONDENCE", "SCREENSHOT", "OTHER"}
+    {
+        "CV",
+        "COVER_LETTER",
+        "JOB_POSTING",
+        "CORRESPONDENCE",
+        "EMAIL_THREAD",
+        "SCREENSHOT",
+        "OTHER",
+    }
 )
 BUNDLE_KINDS = frozenset({"historical_baseline", "active_application"})
 
@@ -317,6 +325,39 @@ class KnowledgeRepository:
             """,
             tuple(chunk_ids),
         )
+        return [_hit(row) for row in rows]
+
+    def search_fts_limited(
+        self,
+        match: str,
+        bundle_ids: list[str] | None,
+        limit: int,
+    ) -> list[ChunkHit]:
+        if not match.strip() or limit < 1:
+            return []
+        params: list[object] = [match]
+        bundle_sql = ""
+        if bundle_ids:
+            marks = ",".join("?" for _ in bundle_ids)
+            bundle_sql = f" AND c.bundle_id IN ({marks})"
+            params.extend(bundle_ids)
+        params.append(limit)
+        try:
+            rows = self._db.query(
+                f"""
+                SELECT c.id, c.document_id, c.bundle_id, c.content, c.section_header,
+                       c.doc_type, c.language, d.filename
+                FROM document_chunks_fts
+                JOIN document_chunks AS c ON c.rowid = document_chunks_fts.rowid
+                JOIN bundle_documents AS d ON d.id = c.document_id
+                WHERE document_chunks_fts MATCH ?
+                {bundle_sql}
+                LIMIT ?
+                """,
+                tuple(params),
+            )
+        except sqlite3.Error:
+            return []
         return [_hit(row) for row in rows]
 
     def search_fts(self, match: str, bundle_ids: list[str]) -> list[ChunkHit]:

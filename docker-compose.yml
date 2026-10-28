@@ -46,6 +46,8 @@ services:
       SPARKY_MASTER_KEY: ${SPARKY_MASTER_KEY:-}
       SPARKY_TAILSCALE_PROXY_HOSTS: ${SPARKY_TAILSCALE_PROXY_HOSTS:-127.0.0.1,::1}
       SPARKY_CORS_ORIGINS: ${SPARKY_CORS_ORIGINS:-http://127.0.0.1:3000,http://localhost:3000}
+      SPARKY_GOOGLE_REDIRECT_URI: ${SPARKY_GOOGLE_REDIRECT_URI:-http://127.0.0.1:3000/settings/google/callback}
+      SPARKY_GOOGLE_LOOKBACK_DAYS: ${SPARKY_GOOGLE_LOOKBACK_DAYS:-90}
     volumes:
       - ${SPARKY_HOST_DATA_DIR:-/mnt/data/sparky_rats}:/data
     depends_on:

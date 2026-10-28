@@ -89,6 +89,15 @@ class SecretsStore:
             raise SecretsError(f"credential payload for {service_name} is not an object")
         return parsed
 
+    def delete(self, service_name: str) -> bool:
+        return (
+            self._db.execute(
+                "DELETE FROM system_credentials WHERE service_name = ?",
+                (service_name,),
+            )
+            > 0
+        )
+
 
 def _fernet_from_text(value: str) -> Fernet:
     try:

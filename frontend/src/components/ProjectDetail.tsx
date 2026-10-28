@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { EvaluationPanel } from "@/components/EvaluationPanel";
+import { ChatPanel, TimelinePanel } from "@/components/ProjectWorkspace";
 import { SalaryPanel } from "@/components/SalaryPanel";
 import { deleteProject, getProject, type Project } from "@/lib/projects";
 
@@ -69,7 +70,10 @@ export function ProjectDetail({ id }: { id: string }) {
           Delete
         </button>
       </div>
-      <p className="mt-2 text-muted">{project.company || "Company not stated"}</p>
+      <p className="mt-2 text-muted">
+        {project.company || "Company not stated"}
+        {project.current_status ? ` · ${project.current_status}` : ""}
+      </p>
       {project.source_ref ? (
         <p className="mt-2 break-all text-sm text-muted">{project.source_ref}</p>
       ) : null}
@@ -80,6 +84,8 @@ export function ProjectDetail({ id }: { id: string }) {
         <RequirementList title="Offered" items={project.offerings ?? []} />
         <EvaluationPanel projectId={project.id} />
         <DocumentsPanel projectId={project.id} />
+        <TimelinePanel projectId={project.id} title={project.title || "this role"} />
+        <ChatPanel projectId={project.id} />
       </div>
 
       <div className="mt-8">
