@@ -1,16 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { EvaluationPanel } from "@/components/EvaluationPanel";
 import { SalaryPanel } from "@/components/SalaryPanel";
-import { getProject, type Project } from "@/lib/projects";
+import { deleteProject, getProject, type Project } from "@/lib/projects";
 
 export function ProjectDetail({ id }: { id: string }) {
+  const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function onDelete() {
+    setPending(true);
+    setError(null);
+    try {
+      await deleteProject(id);
+      router.push("/projects");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not delete the project");
+      setPending(false);
+    }
+  }
 
   useEffect(() => {
     getProject(id)
@@ -41,9 +56,19 @@ export function ProjectDetail({ id }: { id: string }) {
         {project.contract_type || "Contract unknown"}
         {project.language ? ` · ${project.language}` : ""}
       </p>
-      <h1 className="mt-1 font-serif text-4xl tracking-tight">
-        {project.title || "Untitled posting"}
-      </h1>
+      <div className="mt-1 flex items-start justify-between gap-3">
+        <h1 className="font-serif text-4xl tracking-tight">
+          {project.title || "Untitled posting"}
+        </h1>
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={pending}
+          className="mt-2 shrink-0 text-sm text-bad underline-offset-4 hover:underline disabled:opacity-60"
+        >
+          Delete
+        </button>
+      </div>
       <p className="mt-2 text-muted">{project.company || "Company not stated"}</p>
       {project.source_ref ? (
         <p className="mt-2 break-all text-sm text-muted">{project.source_ref}</p>

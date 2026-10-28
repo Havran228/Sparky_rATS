@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { getJob, listProjects, startIngest, type Project } from "@/lib/projects";
+import { deleteProject, getJob, listProjects, startIngest, type Project } from "@/lib/projects";
 
 export function ProjectsBoard() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -43,6 +43,19 @@ export function ProjectsBoard() {
     }
   }
 
+  async function onDelete(id: string) {
+    setPending(true);
+    setError(null);
+    try {
+      await deleteProject(id);
+      await refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not delete the project");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <div className="max-w-3xl">
       <h1 className="font-serif text-3xl">Projects</h1>
@@ -73,8 +86,8 @@ export function ProjectsBoard() {
           <li className="px-4 py-6 text-sm text-muted">No projects yet.</li>
         ) : (
           projects.map((project) => (
-            <li key={project.id}>
-              <Link href={`/projects/${project.id}`} className="block px-4 py-3 hover:bg-white">
+            <li key={project.id} className="flex items-start justify-between gap-3 px-4 py-3">
+              <Link href={`/projects/${project.id}`} className="min-w-0 flex-1 hover:opacity-80">
                 <span className="font-serif text-lg">{project.title || "Untitled posting"}</span>
                 <span className="mt-1 block text-sm text-muted">
                   {[project.company, project.contract_type, salaryLabel(project)]
@@ -82,6 +95,14 @@ export function ProjectsBoard() {
                     .join(" · ")}
                 </span>
               </Link>
+              <button
+                type="button"
+                onClick={() => onDelete(project.id)}
+                disabled={pending}
+                className="mt-1 shrink-0 text-sm text-bad underline-offset-4 hover:underline disabled:opacity-60"
+              >
+                Delete
+              </button>
             </li>
           ))
         )}

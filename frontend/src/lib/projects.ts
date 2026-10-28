@@ -84,6 +84,13 @@ export async function listProjects(): Promise<Project[]> {
   return body.projects;
 }
 
+export async function deleteProject(id: string): Promise<void> {
+  const response = await api(`/projects/${id}`, { method: "DELETE" });
+  if (!response.ok) {
+    throw new Error(await errorDetail(response));
+  }
+}
+
 export async function getProject(id: string): Promise<Project> {
   const response = await api(`/projects/${id}`);
   if (!response.ok) {

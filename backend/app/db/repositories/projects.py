@@ -124,6 +124,31 @@ class ProjectRepository:
             return None
         return _row(row)
 
+    def delete(self, project_id: str) -> list[str] | None:
+        """Delete a project and return the PDF paths it owned.
+
+        Stages, evaluations, chats, and generated documents cascade. Bundle
+        rows stay, with their project link cleared by the foreign key. Chunk
+        rows are not foreign-keyed, so their project id is cleared here.
+        """
+        if self.get(project_id) is None:
+            return None
+        with self._db.immediate() as conn:
+            rows = conn.execute(
+                """
+                SELECT pdf_path FROM generated_documents
+                WHERE project_id = ? AND pdf_path IS NOT NULL
+                """,
+                (project_id,),
+            ).fetchall()
+            paths = [str(row["pdf_path"]) for row in rows if row["pdf_path"]]
+            conn.execute(
+                "UPDATE document_chunks SET project_id = NULL WHERE project_id = ?",
+                (project_id,),
+            )
+            conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        return paths
+
 
 def _dump(value: object) -> str | None:
     if value is None:
