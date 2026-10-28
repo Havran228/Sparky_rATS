@@ -7,7 +7,13 @@ import pytest
 
 from app.crawl_fallback import FallbackUnavailable
 from app.ingest.profesia import BROWSER_HEADERS, parse_profesia_html
-from app.services.scraper import fetch_posting, needs_headless_fallback, parse_job_html
+from app.services.scraper import (
+    description_needs_html_fallback,
+    fetch_posting,
+    merge_posting_sources,
+    needs_headless_fallback,
+    parse_job_html,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -75,6 +81,8 @@ async def test_fetch_uses_cache_and_skips_fallback_on_json_ld(tmp_path: Path) ->
     assert fetched.used_fallback is False
     assert calls == 0
     assert fetched.job_posting is not None
+    assert "description" not in fetched.job_posting
+    assert "Zodpovednosť za API" in fetched.markdown
     assert Path(fetched.cache_path).read_text(encoding="utf-8") == html
 
 
@@ -128,3 +136,40 @@ async def test_blocked_page_survives_when_crawl4ai_is_missing(tmp_path: Path) ->
     assert fetched.used_fallback is False
     assert fetched.status_code == 403
     assert "Backend engineer" in fetched.markdown
+
+
+def test_thin_or_boilerplate_json_ld_uses_the_html_ad() -> None:
+    assert description_needs_html_fallback(None) is True
+    assert description_needs_html_fallback("Online") is True
+    assert description_needs_html_fallback("x" * 99) is True
+    long_cookie = "Prihláste sa a súhlaste s cookies na Profesia.sk. " + ("text " * 20)
+    assert description_needs_html_fallback(long_cookie) is True
+    assert description_needs_html_fallback("x" * 100) is False
+
+    html = (FIXTURES / "profesia_thin_jsonld.html").read_text(encoding="utf-8")
+    page, job, _title = parse_job_html(html)
+    parsed = parse_profesia_html(html)
+    markdown, merged = merge_posting_sources(page, job, parsed.markdown)
+    assert merged is not None
+    assert "description" not in merged
+    assert "Telefonovať klientom" in markdown
+    assert "Slovenský jazyk na slovom a na písme" in markdown
+    assert "Práca z domu" in markdown
+    assert "Odporúčané ponuky" not in markdown
+
+    boilerplate = (
+        "<html><head><script type='application/ld+json'>"
+        '{"@type":"JobPosting","title":"Operátor",'
+        '"description":"Prihláste sa. Cookie. Súhlas s GDPR a newsletter."}'
+        "</script></head><body>"
+        "<div class='job-ad'><p>Obsluha prichádzajúcich hovorov a práca s CRM.</p>"
+        "<p>Ponúkame flexi konto a sick days.</p></div></body></html>"
+    )
+    page, job, _title = parse_job_html(boilerplate)
+    parsed = parse_profesia_html(boilerplate)
+    markdown, merged = merge_posting_sources(page, job, parsed.markdown)
+    assert merged is not None
+    assert "description" not in merged
+    assert "Obsluha prichádzajúcich hovorov" in markdown
+    assert "flexi konto" in markdown
+    assert "newsletter" not in markdown.lower()

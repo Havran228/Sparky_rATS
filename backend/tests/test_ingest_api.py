@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.llm.ollama_client import ModelRole
@@ -99,6 +100,94 @@ def test_pasted_posting_becomes_a_project(
     assert payload["requirements"]["mandatory"] == ["Python"]
     assert payload["salary"]["minimum"] == "2500"
     assert payload["prompt_version"] == "extract_job_v1"
+
+
+def test_empty_extract_is_not_saved(
+    client: TestClient,
+    auth_header: dict[str, str],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    async def fake_structured(
+        role: object,
+        prompt: str,
+        schema: type[JobPostingExtract],
+        *,
+        system: str | None = None,
+    ) -> JobPostingExtract:
+        del role, prompt, system
+        return schema(title="Operátor", company="Lightning Hub")
+
+    client.app.state.ollama.structured = fake_structured
+    with caplog.at_level("WARNING"):
+        created = client.post(
+            "/projects/ingest",
+            headers=auth_header,
+            json={"input": "Operátor call centra, Lightning Hub."},
+        )
+    assert created.status_code == 202
+    job = _wait(client, created.json()["job_id"], auth_header)
+    assert job["status"] == "FAILED"
+    assert job["error"] is not None
+    assert "not saved" in str(job["error"])
+    listing = client.get("/projects", headers=auth_header)
+    assert listing.json()["projects"] == []
+    assert any("no requirements or offerings" in record.message for record in caplog.records)
+
+
+def test_fetched_body_is_what_the_fast_model_sees(
+    client: TestClient,
+    auth_header: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.services.scraper import FetchedPosting
+
+    body = (
+        "Náplň práce: telefonovať klientom a zapisovať požiadavky.\n\n"
+        "Požiadavky: slovenský jazyk.\n\n"
+        "Benefity: práca z domu."
+    )
+    prompts: list[str] = []
+
+    async def fake_fetch(*args: object, **kwargs: object) -> FetchedPosting:
+        del args, kwargs
+        return FetchedPosting(
+            url="https://www.profesia.sk/praca/lightning-hub/O5380068/",
+            status_code=200,
+            html="",
+            markdown=body,
+            job_posting={"@type": "JobPosting", "title": "Operátor"},
+            used_fallback=False,
+            cache_path="",
+        )
+
+    async def fake_structured(
+        role: object,
+        prompt: str,
+        schema: type[JobPostingExtract],
+        *,
+        system: str | None = None,
+    ) -> JobPostingExtract:
+        del role, system
+        prompts.append(prompt)
+        return schema(
+            title="Operátor",
+            company="Lightning Hub",
+            mandatory_requirements=["slovenský jazyk"],
+            offerings=["práca z domu"],
+        )
+
+    monkeypatch.setattr("app.services.ingest.scraper.fetch_posting", fake_fetch)
+    client.app.state.ollama.structured = fake_structured
+    created = client.post(
+        "/projects/ingest",
+        headers=auth_header,
+        json={"input": "https://www.profesia.sk/praca/lightning-hub/O5380068/"},
+    )
+    job = _wait(client, created.json()["job_id"], auth_header)
+    assert job["status"] == "DONE", job.get("error")
+    assert prompts and "telefonovať klientom" in prompts[0]
+    assert "slovenský jazyk" in prompts[0]
+    assert "práca z domu" in prompts[0]
 
 
 def test_file_ingest_points_at_bundles(

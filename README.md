@@ -201,8 +201,10 @@ target machine (Slice 5).
 ## Core pipelines
 
 **Ingestion.** Input classifier (regex for Profesia ID / URL, MIME for files) → httpx GET + JSON-LD
-`JobPosting` parse → Crawl4AI fallback on 403/503/empty → Docling for PDF/DOCX → vision model for
-images → fast LLM structured extraction (Pydantic schema) → `projects` row + job completion event.
+`JobPosting` parse. A missing, short, or boilerplate JSON-LD description is replaced by the HTML
+ad body (`div.details`, `div.job-ad`, or the article). Crawl4AI runs only on 403/503 or a bot
+challenge. Docling parses PDF/DOCX, and the vision model reads images. The fast model then fills
+requirements and offerings. If both come back empty, the job fails and no project is saved.
 
 **Salary.** `salary_calc` takes gross monthly EUR and a tax year. 2026 rules: employee social 9.4%
 (capped), employee health 5%, NČZD 497.23/month with high-income phase-out, four tax brackets

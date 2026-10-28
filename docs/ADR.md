@@ -39,6 +39,7 @@ Status values: `Proposed` (awaiting owner sign-off), `Accepted`, `Superseded by 
 | [ADR-022](#adr-022) | PDF and DOCX parsing is an optional Docling extra | Proposed |
 | [ADR-023](#adr-023) | Generation is grounded on the confirmed profile and compiles from a file inside the sandbox | Proposed |
 | [ADR-024](#adr-024) | The backend image installs the Docling parse extra | Proposed |
+| [ADR-025](#adr-025) | A thin Profesia JSON-LD description falls back to the HTML ad | Proposed |
 
 ---
 
@@ -956,3 +957,34 @@ that parser present on every start, including on the Spark where a later pip ins
 - A backend image rebuild downloads Torch and is much larger.
 - `from docling.document_converter import DocumentConverter` works in the container.
 - A checkout outside Docker still needs `pip install 'sparky-rats[parse]'` for PDF and DOCX.
+
+---
+
+## ADR-025
+
+### A thin Profesia JSON-LD description falls back to the HTML ad
+
+**Status:** Proposed
+**Refines:** ADR-006 item 2 and ADR-021 (JSON-LD first, HTML when the block is missing).
+
+#### Context
+
+Profesia often ships a `JobPosting` block whose `description` is only a word or two, or site
+chrome such as a login or cookie line. The title and company still parse, so ingestion saved a
+project with empty Required, Preferred, and Offered lists. The duties and benefits were in the
+HTML ad, not in that description.
+
+#### Decision
+
+- If the JSON-LD description is missing, shorter than 100 characters, or matches boilerplate
+  (cookies, login, GDPR, recommended offers), it is dropped.
+- The posting text sent to the fast model is then the HTML body, preferring `div.details` and
+  `div.job-ad`, then the article container, via BeautifulSoup.
+- A usable description is kept only as extra context beside that body.
+- When the model returns no requirements and no offerings, the job fails and no project row is
+  written.
+
+#### Consequences
+
+- A call-centre posting whose schema description is "Online" can still yield requirements.
+- An extract with nothing to match against does not become a project.

@@ -36,6 +36,16 @@ _CHALLENGE_RE = re.compile(
     r"just a moment|cf-browser-verification|cf-mitigated|g-recaptcha|hcaptcha",
     re.IGNORECASE,
 )
+_TAG_RE = re.compile(r"<[^>]+>")
+_BOILERPLATE_RE = re.compile(
+    r"(cookie|gdpr|newsletter|s[uú]hlas|prihl[aá]s|prihlas|"
+    r"zobrazi[tť]\s+kontakt|zobrazit\s+kontakt|"
+    r"odpor[uú][cč]an[eé]\s+ponuky|podobn[eé]\s+ponuky|"
+    r"tieto\s+str[aá]nky\s+pou[zž][ií]vaj|lorem\s+ipsum|"
+    r"pracovn[aá]\s+ponuka\s+na\s+profesia)",
+    re.IGNORECASE,
+)
+_MIN_DESCRIPTION_CHARS = 100
 _MIME_BY_SUFFIX = {
     ".pdf": "application/pdf",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -160,13 +170,12 @@ async def fetch_posting(
         response = await http.get(url, headers=BROWSER_HEADERS)
         html = response.text
         cache_path = _write_cache(cache_dir, url, html)
-        markdown, job, _title = parse_job_html(html)
+        page_markdown, job, _title = parse_job_html(html)
         status = response.status_code
         html_posting = parse_profesia_html(html)
         if job is None:
             job = html_posting.as_job_posting()
-            if html_posting.markdown:
-                markdown = html_posting.markdown
+        markdown, job = merge_posting_sources(page_markdown, job, html_posting.markdown)
         if not needs_headless_fallback(status, html):
             return FetchedPosting(
                 url=url,
@@ -264,6 +273,54 @@ async def _optional_headless(url: str, fallback: Fallback | None) -> str | None:
     if isinstance(rendered, str) and rendered.strip():
         return rendered.strip()
     return None
+
+
+def description_needs_html_fallback(description: object) -> bool:
+    """A JSON-LD description is not enough when it is missing, tiny, or site chrome."""
+    text = plain_text(description)
+    if len(text) < _MIN_DESCRIPTION_CHARS:
+        return True
+    return _BOILERPLATE_RE.search(text) is not None
+
+
+def plain_text(value: object) -> str:
+    if isinstance(value, dict):
+        for key in ("@value", "value", "text"):
+            if key in value:
+                return plain_text(value[key])
+        return ""
+    if isinstance(value, list):
+        return " ".join(part for part in (plain_text(item) for item in value) if part)
+    if not isinstance(value, str):
+        return ""
+    stripped = _TAG_RE.sub(" ", value)
+    return " ".join(stripped.replace("\xa0", " ").split())
+
+
+def merge_posting_sources(
+    page_markdown: str,
+    job: dict[str, object] | None,
+    html_markdown: str,
+) -> tuple[str, dict[str, object] | None]:
+    """Prefer the HTML ad body over a thin or boilerplate JSON-LD description.
+
+    The fast model receives this markdown as the posting text. A usable JSON-LD
+    description is kept as extra context, not as the only source.
+    """
+    html_text = html_markdown.strip()
+    page_text = page_markdown.strip()
+    if job is None:
+        return html_text or page_text, None
+    description = plain_text(job.get("description"))
+    if description_needs_html_fallback(description):
+        chosen = html_text or page_text or description
+        updated = {key: value for key, value in job.items() if key != "description"}
+        return chosen, updated
+    if html_text and description not in html_text:
+        return f"{html_text}\n\n{description}".strip(), job
+    if html_text:
+        return html_text, job
+    return page_text or description, job
 
 
 def _url_id(url: str) -> str | None:

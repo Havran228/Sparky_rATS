@@ -41,12 +41,15 @@ _SALARY_SELECTORS = (
     "[class*=plat]",
 )
 _BODY_SELECTORS = (
+    "div.details",
+    "div.job-ad",
     ".job-description",
     "#job-description",
     "[itemprop=description]",
     "article",
     "main",
 )
+_MIN_BODY_CHARS = 100
 _SKIP_TAGS = {"script", "style", "noscript", "nav", "footer", "form", "svg"}
 
 
@@ -76,7 +79,7 @@ def parse_profesia_html(html: str) -> HtmlPosting:
     title = _title(soup)
     company = _company(soup)
     salary = _salary(soup)
-    body = _first(soup, _BODY_SELECTORS) or soup.body or soup
+    body = _job_body(soup)
     description = _markdown(body).strip()
     lines: list[str] = []
     if title:
@@ -131,6 +134,25 @@ def _salary(soup: BeautifulSoup) -> str | None:
             if any(character.isdigit() for character in cleaned):
                 return cleaned
     return None
+
+
+def _job_body(soup: BeautifulSoup) -> Tag:
+    """Prefer the real ad container over a short JSON-LD blurb or the whole page."""
+    best: Tag | None = None
+    best_length = 0
+    for selector in _BODY_SELECTORS:
+        found = soup.select_one(selector)
+        if not isinstance(found, Tag):
+            continue
+        length = len(_clean(found.get_text(" ", strip=True)))
+        if length >= _MIN_BODY_CHARS:
+            return found
+        if length > best_length:
+            best = found
+            best_length = length
+    if best is not None:
+        return best
+    return soup.body or soup
 
 
 def _first(soup: BeautifulSoup, selectors: tuple[str, ...]) -> Tag | None:

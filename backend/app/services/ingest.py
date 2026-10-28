@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -20,6 +21,7 @@ from app.services.scraper import InputKind, classify, profesia_url_for
 
 PROMPT_NAME = "extract_job_v1"
 Progress = Callable[[int, str], None]
+log = logging.getLogger(__name__)
 
 
 def register_ingest_handler(
@@ -90,6 +92,14 @@ async def ingest_input(
         system=system,
     )
     extract = _fill_gaps(extract, markdown, job_posting)
+    if not _has_requirements_or_offerings(extract):
+        log.warning(
+            "ingest produced no requirements or offerings for %s; not saving",
+            source_ref,
+        )
+        raise RuntimeError(
+            "The posting had no requirements or offerings after extraction, so it was not saved."
+        )
     report(85, "saving")
     saved = ProjectRepository(db).insert(
         source_kind=classified.kind.value,
@@ -112,6 +122,15 @@ async def ingest_input(
     )
     report(100, "saved")
     return {"project_id": saved.id}
+
+
+def _has_requirements_or_offerings(extract: JobPostingExtract) -> bool:
+    groups = (
+        extract.mandatory_requirements,
+        extract.preferred_requirements,
+        extract.offerings,
+    )
+    return any(item.strip() for group in groups for item in group)
 
 
 def _prompt(markdown: str, job_posting: dict[str, object] | None) -> str:
