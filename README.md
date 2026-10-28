@@ -45,8 +45,10 @@ The UI calls the API through the Next.js server, which adds the bearer token.
 Bundles: `POST /bundles`, `POST /bundles/{id}/documents` (multipart), `POST /projects/{id}/evaluate`.
 Documents: `POST /projects/{id}/documents` (202 + job), `GET /documents/{id}/pdf`,
 `GET /documents/{id}/diff/{other_id}`, `POST /documents/{id}/submit`.
-Text, Markdown, and HTML parse without extra packages. PDF and DOCX need
-`pip install 'sparky-rats[parse]'` (Docling). Photos are transcribed by the vision role.
+Text, Markdown, and HTML parse without extra packages. A local checkout needs
+`pip install 'sparky-rats[parse]'` before PDF and DOCX work. The backend image
+installs `.[dev,parse]`, so Docling is already in that container. Photos are
+transcribed by the vision role.
 Dropping a file into `$SPARKY_DATA_DIR/inbox` moves it to `bundles/_inbox` and ingests it into
 the Inbox bundle. A repeated file hash is skipped before any model call.
 

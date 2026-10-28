@@ -38,6 +38,7 @@ Status values: `Proposed` (awaiting owner sign-off), `Accepted`, `Superseded by 
 | [ADR-021](#adr-021) | Missing JSON-LD is parsed from HTML; Crawl4AI stays optional | Proposed |
 | [ADR-022](#adr-022) | PDF and DOCX parsing is an optional Docling extra | Proposed |
 | [ADR-023](#adr-023) | Generation is grounded on the confirmed profile and compiles from a file inside the sandbox | Proposed |
+| [ADR-024](#adr-024) | The backend image installs the Docling parse extra | Proposed |
 
 ---
 
@@ -927,3 +928,31 @@ is in Europe/Bratislava.
   not in the PDF.
 - CI installs the pinned Typst binary, Poppler, Liberation Sans, and Roboto. The backend image
   does the same.
+
+---
+
+## ADR-024
+
+### The backend image installs the Docling parse extra
+
+**Status:** Proposed
+**Refines:** ADR-022 consequence that the default image stays free of Torch.
+
+#### Context
+
+ADR-022 kept Docling out of the image so a backend rebuild would not pull Torch. PDF and DOCX
+uploads then fail in the container until someone installs the extra by hand. The owner wants
+that parser present on every start, including on the Spark where a later pip install is awkward.
+
+#### Decision
+
+- `backend/Dockerfile` installs `.[dev,parse]`, so Docling is part of the image.
+- The image apt line includes `libgl1`, `libglib2.0-0`, and `poppler-utils`. The first two are
+  what Docling's OpenCV import needs. Poppler supplies `pdftotext`.
+- CI still installs the backend without the parse extra. Unit tests do not convert real PDFs.
+
+#### Consequences
+
+- A backend image rebuild downloads Torch and is much larger.
+- `from docling.document_converter import DocumentConverter` works in the container.
+- A checkout outside Docker still needs `pip install 'sparky-rats[parse]'` for PDF and DOCX.

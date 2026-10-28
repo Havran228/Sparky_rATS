@@ -2,13 +2,16 @@ FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 
-# PDF and DOCX parsing is the optional Docling extra (ADR-022): pip install '.[parse]'.
-# Typst compiles CVs inside a throwaway root. pdftotext reads the text layer back.
+# The image bakes in the parse extra (ADR-024), so Docling is present without a later pip.
+# libgl1 and libglib2.0-0 are the OpenCV/OCR libraries Docling imports at startup.
+# poppler-utils provides pdftotext for the round-trip ATS check. Typst compiles CVs.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         xz-utils \
+        libgl1 \
+        libglib2.0-0 \
         poppler-utils \
         fonts-liberation \
         fonts-roboto \
@@ -20,7 +23,7 @@ RUN bash /tmp/install_typst.sh && rm /tmp/install_typst.sh
 COPY pyproject.toml ./
 COPY app ./app
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir ".[dev,parse]"
 
 EXPOSE 8000 8001
 
