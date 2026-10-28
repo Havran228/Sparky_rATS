@@ -59,10 +59,9 @@ async def ingest_input(
     report(10, "classified")
     if classified.kind is InputKind.FILE:
         name = classified.filename or "upload"
-        mime = classified.mime_type or "unknown type"
         raise RuntimeError(
-            f"File parsing for {name} ({mime}) arrives in slice 2. "
-            "Paste the posting text or a link."
+            f"{name} is a file. Upload it into a knowledge bundle; "
+            "the project bar accepts a link, a Profesia id, or pasted text."
         )
 
     markdown = raw.strip()

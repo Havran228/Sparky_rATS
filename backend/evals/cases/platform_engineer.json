@@ -1,0 +1,21 @@
+{
+  "id": "platform-engineer",
+  "mandatory": ["Kubernetes", "Python", "Go"],
+  "preferred": ["Terraform"],
+  "offerings": ["Home office"],
+  "documents": [
+    {
+      "filename": "cv.md",
+      "doc_type": "CV",
+      "text": "# Experience\n\nBuilt internal platforms on Kubernetes and wrote Python services for the deploy pipeline.\n"
+    }
+  ],
+  "expected": {
+    "Kubernetes": "GREEN",
+    "Python": "GREEN",
+    "Go": "RED",
+    "Terraform": "RED",
+    "Home office": "RED"
+  },
+  "expected_hazards": ["Go"]
+}

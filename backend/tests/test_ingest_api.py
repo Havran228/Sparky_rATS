@@ -101,7 +101,7 @@ def test_pasted_posting_becomes_a_project(
     assert payload["prompt_version"] == "extract_job_v1"
 
 
-def test_file_ingest_fails_until_slice_2(
+def test_file_ingest_points_at_bundles(
     client: TestClient,
     auth_header: dict[str, str],
 ) -> None:
@@ -113,7 +113,8 @@ def test_file_ingest_fails_until_slice_2(
     assert created.status_code == 202
     job = _wait(client, created.json()["job_id"], auth_header)
     assert job["status"] == "FAILED"
-    assert "slice 2" in job["error"]
+    assert job["error"] is not None
+    assert "knowledge bundle" in str(job["error"])
 
 
 def _wait(client: TestClient, job_id: str, auth_header: dict[str, str]) -> dict[str, object]:

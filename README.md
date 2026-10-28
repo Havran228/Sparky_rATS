@@ -9,9 +9,10 @@ down for recruiters. Sparky_rATS flips that: it ingests the job, compares it aga
 actually done, tells you where you pass, where you can bridge, and where you genuinely fall short,
 and then compiles an ATS-safe CV and cover letter (EN / SK) that you review and submit yourself.
 
-> Status: **Slice 1 is implemented** (Profesia ingestion, 2025/2026 salary engine, project
-> list and gross-to-net panel). Architecture decisions are recorded in
-> [docs/ADR.md](docs/ADR.md). Slices 2–5 are not built yet.
+> Status: **Slice 2 is implemented on this branch** (bundle upload, inbox ingest, chunking,
+> FTS5 and embeddings, lexical plus cited traffic-light matching, skills profile, eval harness),
+> stacked on Slice 1. It is not merged to `main` yet. Architecture decisions are recorded in
+> [docs/ADR.md](docs/ADR.md). Slices 3–5 are not built yet.
 
 ### Run the skeleton
 
@@ -37,8 +38,15 @@ export SPARKY_API_BASE=http://127.0.0.1:8002
 cd frontend && npm install && npm run dev
 ```
 
-The projects screen calls the API through the Next.js server, which adds the bearer token.
-`GET /health` stays public. `POST /projects/ingest` returns a job; `POST /salary/net` is synchronous.
+The UI calls the API through the Next.js server, which adds the bearer token.
+`GET /health` stays public. Ingest, bundle upload, evaluation, and skill proposals return a job.
+`POST /salary/net` and profile edits are synchronous.
+
+Bundles: `POST /bundles`, `POST /bundles/{id}/documents` (multipart), `POST /projects/{id}/evaluate`.
+Text, Markdown, and HTML parse without extra packages. PDF and DOCX need
+`pip install 'sparky-rats[parse]'` (Docling). Photos are transcribed by the vision role.
+Dropping a file into `$SPARKY_DATA_DIR/inbox` moves it to `bundles/_inbox` and ingests it into
+the Inbox bundle. A repeated file hash is skipped before any model call.
 
 On the Spark, `docker compose up --build` publishes the API on host port 8002
 (the container still listens on 8000; host port 8000 is left for Portainer), MCP on 8001, and the UI
@@ -251,7 +259,9 @@ Planned layout (created incrementally by the build slices):
 │   │   ├── config.py               # env, model roles, paths
 │   │   ├── auth.py                 # Tailscale identity / shared secret
 │   │   ├── secrets_store.py        # Fernet blobs, master.key bootstrap
-│   │   ├── inbox_observer.py       # watchdog thread used by the watcher stub
+│   │   ├── inbox_observer.py       # watchdog thread used by the inbox watcher
+│   │   ├── docling_convert.py      # optional PDF/DOCX conversion (ADR-022)
+│   │   ├── data/aliases_v1.json    # EN/SK alias dictionary
 │   │   ├── db/                     # connection, migrations/*.sql, repositories
 │   │   ├── vector_store.py         # embedded Qdrant wrapper (single instance)
 │   │   ├── jobs.py                 # async job runner + SSE
@@ -260,11 +270,13 @@ Planned layout (created incrementally by the build slices):
 │   │   ├── mcp_server.py           # FastMCP streamable-HTTP server
 │   │   ├── mcp_client.py           # optional external MCP servers, whitelist
 │   │   ├── services/
-│   │   │   ├── scraper.py          # httpx JSON-LD + Crawl4AI fallback
-│   │   │   ├── parser.py           # Docling + vision fallback, chunking
+│   │   │   ├── scraper.py          # httpx JSON-LD + HTML parse, Crawl4AI fallback
+│   │   │   ├── parser.py           # text/Markdown/HTML, Docling + vision, chunking
+│   │   │   ├── bundle_ingest.py    # hash, chunks, FTS5, embeddings
 │   │   │   ├── salary_calc.py      # year-parameterized Slovak payroll
 │   │   │   ├── ats_engine.py       # lexical matcher, alias dictionary, scoring
 │   │   │   ├── evaluator.py        # retrieval + LLM classification + citation check
+│   │   │   ├── profile.py          # skills inventory proposal and confirm merge
 │   │   │   ├── doc_generator.py    # JSON model -> Typst -> PDF -> round-trip check
 │   │   │   ├── google_client.py    # read-only client with transport interceptor
 │   │   │   └── watcher.py          # in-process inbox observer
@@ -272,7 +284,8 @@ Planned layout (created incrementally by the build slices):
 │   │       ├── resume_en.typ
 │   │       ├── resume_sk.typ
 │   │       └── cover_letter.typ
-│   └── tests/                      # golden salary cases, scraper fixtures, interceptor tests
+│   ├── tests/                      # salary goldens, scraper fixtures, matching tests
+│   └── evals/                      # posting + bundle cases, agreement by model/prompt
 ├── frontend/
 │   ├── Dockerfile
 │   └── src/app/, src/components/
@@ -288,7 +301,7 @@ Planned layout (created incrementally by the build slices):
 ├── sparky_rats.db          SQLite database (WAL)
 ├── qdrant/                 embedded Qdrant storage
 ├── ollama/                 model weights (OLLAMA_MODELS)
-├── bundles/                uploaded bundle files
+├── bundles/                uploaded bundle files, plus _inbox and _raw
 ├── inbox/                  hot folder watched for ingestion
 ├── exports/                compiled PDFs
 ├── credentials/            master.key (0600)

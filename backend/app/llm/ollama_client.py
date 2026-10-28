@@ -83,6 +83,30 @@ class OllamaClient:
                     names.append(item["name"])
         return OllamaHealth(ok=True, loaded_models=names)
 
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        if not texts:
+            return []
+        payload = {
+            "model": self.model_name(ModelRole.embed),
+            "input": texts,
+            "keep_alive": self._keep_alive[ModelRole.embed],
+        }
+        try:
+            response = await self._http.post("/api/embed", json=payload)
+            response.raise_for_status()
+        except Exception as exc:
+            raise OllamaError(f"{type(exc).__name__}: {exc}") from exc
+        body = response.json()
+        raw = body.get("embeddings") if isinstance(body, dict) else None
+        if not isinstance(raw, list) or len(raw) != len(texts):
+            raise OllamaError("Ollama embed response did not include one vector per input")
+        vectors: list[list[float]] = []
+        for item in raw:
+            if not isinstance(item, list) or not item:
+                raise OllamaError("Ollama embed vector was empty")
+            vectors.append([float(value) for value in item])
+        return vectors
+
     async def structured(
         self,
         role: ModelRole,
@@ -90,11 +114,15 @@ class OllamaClient:
         schema: type[T],
         *,
         system: str | None = None,
+        images: list[str] | None = None,
     ) -> T:
-        messages: list[dict[str, str]] = []
+        messages: list[dict[str, object]] = []
         if system:
             messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
+        user: dict[str, object] = {"role": "user", "content": prompt}
+        if images:
+            user["images"] = images
+        messages.append(user)
         schema_format = schema.model_json_schema()
         last_error = "response did not match the schema"
         for attempt in (1, 2):
@@ -121,7 +149,7 @@ class OllamaClient:
     async def _chat(
         self,
         role: ModelRole,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, object]],
         schema_format: dict[str, object],
     ) -> str:
         payload = {

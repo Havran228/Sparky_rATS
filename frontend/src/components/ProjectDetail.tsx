@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { EvaluationPanel } from "@/components/EvaluationPanel";
 import { SalaryPanel } from "@/components/SalaryPanel";
 import { getProject, type Project } from "@/lib/projects";
 
@@ -51,6 +52,7 @@ export function ProjectDetail({ id }: { id: string }) {
         <RequirementList title="Required" items={project.requirements?.mandatory ?? []} />
         <RequirementList title="Preferred" items={project.requirements?.preferred ?? []} />
         <RequirementList title="Offered" items={project.offerings ?? []} />
+        <EvaluationPanel projectId={project.id} />
       </div>
 
       <div className="mt-8">

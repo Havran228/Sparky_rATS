@@ -22,9 +22,14 @@ from app.db.repositories.jobs import RESTART_ERROR, JobRepository
 from app.jobs import JobRunner, format_sse
 from app.llm.ollama_client import OllamaClient, OllamaHealth
 from app.mcp_server import create_mcp_app
+from app.routes.bundles import install_bundle_routes
+from app.routes.matching import install_matching_routes
 from app.routes.projects import install_project_routes
 from app.secrets_store import SecretsStore, ensure_bearer, load_fernet
+from app.services.bundle_ingest import register_bundle_handler
+from app.services.evaluator import register_evaluation_handler
 from app.services.ingest import register_ingest_handler
+from app.services.profile import register_profile_handler
 from app.services.watcher import InboxWatcher
 from app.vector_store import VectorStore
 
@@ -113,6 +118,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return StreamingResponse(stream(), media_type="text/event-stream")
 
     install_project_routes(app)
+    install_bundle_routes(app)
+    install_matching_routes(app)
     return app
 
 
@@ -210,7 +217,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.ollama = ollama
         runner = JobRunner(db, general_concurrency=settings.general_job_concurrency)
         register_ingest_handler(runner, db, ollama, settings)
+        register_bundle_handler(runner, db, ollama, vectors, settings)
+        register_evaluation_handler(runner, db, ollama, vectors, settings)
+        register_profile_handler(runner, db, ollama)
         app.state.job_runner = runner
+        watcher = InboxWatcher(
+            settings.inbox_dir,
+            dest=settings.inbox_staging_dir,
+            on_file=lambda path, original, digest: runner.enqueue_from_thread(
+                "ingest_file",
+                {
+                    "path": str(path),
+                    "filename": original,
+                    "content_hash": digest,
+                    "source": "inbox",
+                },
+            ),
+            debounce_seconds=settings.inbox_debounce_seconds,
+        )
+        app.state.watcher = watcher
         if settings.enable_watcher:
             watcher.start()
         if settings.enable_mcp_server:

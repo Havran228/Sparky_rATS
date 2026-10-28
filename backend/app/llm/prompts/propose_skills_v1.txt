@@ -1,0 +1,4 @@
+Propose a skills inventory from the bundle excerpts.
+Include only skills the excerpts support. years and last_used are null when the text does not say.
+Do not invent employers, dates, or skills that are not evidenced.
+languages use a language name and a CEFR level when the text states one.

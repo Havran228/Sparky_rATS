@@ -48,7 +48,7 @@ export function ProjectsBoard() {
       <h1 className="font-serif text-3xl">Projects</h1>
       <p className="mt-2 text-sm leading-6 text-muted">
         Paste a Profesia link, a seven-digit id, or the posting text. The fast model turns it into
-        a project. PDF and photo parsing arrives in the next slice.
+        a project. CVs and photos go into a knowledge bundle, not this bar.
       </p>
       <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-2 sm:flex-row">
         <input

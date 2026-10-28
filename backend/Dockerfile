@@ -2,7 +2,8 @@ FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 
-# Typst, Docling, and Chromium arrive with the slices that use them.
+# PDF and DOCX parsing is the optional Docling extra (ADR-022): pip install '.[parse]'.
+# Text, Markdown, and HTML parse without it. Typst and Chromium arrive later.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*

@@ -55,6 +55,7 @@ class JobRunner:
         self._wake = asyncio.Event()
         self._subscribers: dict[str, set[asyncio.Queue[JobRecord]]] = defaultdict(set)
         self._tasks: set[asyncio.Task[None]] = set()
+        self._loop: asyncio.AbstractEventLoop | None = None
 
     def register(self, job_type: str, handler: JobHandler, *, llm: bool = False) -> None:
         self._handlers[job_type] = handler
@@ -66,6 +67,16 @@ class JobRunner:
     def enqueue(self, job_type: str, payload: dict[str, Any]) -> str:
         job = self._repo.insert(job_type, payload)
         self._wake.set()
+        return job.id
+
+    def enqueue_from_thread(self, job_type: str, payload: dict[str, Any]) -> str:
+        """Queue work from the inbox thread. The runner also polls every 0.2s."""
+        job = self._repo.insert(job_type, payload)
+        loop = self._loop
+        if loop is not None and loop.is_running():
+            loop.call_soon_threadsafe(self._wake.set)
+        else:
+            self._wake.set()
         return job.id
 
     def get(self, job_id: str) -> JobRecord | None:
@@ -96,6 +107,7 @@ class JobRunner:
             queue.put_nowait(job)
 
     async def loop(self) -> None:
+        self._loop = asyncio.get_running_loop()
         while not self._stopped:
             self._dispatch_available()
             if self._stopped:

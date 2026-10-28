@@ -36,7 +36,7 @@ export type JobView = {
   progress: number;
   progress_message: string;
   error: string | null;
-  result: { project_id?: string } | null;
+  result: Record<string, unknown> | null;
 };
 
 export type LevyLine = { code: string; amount: string };

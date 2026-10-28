@@ -1,1 +1,1 @@
-"""Domain services. Slice 0 ships the inbox watcher stub only."""
+"""Domain services: ingest, payroll, bundles, matching, and the inbox watcher."""
