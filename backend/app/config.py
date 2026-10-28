@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     ollama_timeout_seconds: float = 120.0
     ollama_health_timeout_seconds: float = 2.0
 
+    # ADR-002 candidates. scripts/benchmark_models.sh measures them on the Spark
+    # and records the result in docs/benchmarks.md. These stay the defaults until
+    # that file shows a run and the defaults are edited on purpose. Env overrides win.
     model_fast: str = "qwen3:30b-a3b"
     model_heavy: str = "gpt-oss:120b"
     model_vision: str = "qwen3-vl:8b"
@@ -57,6 +60,7 @@ class Settings(BaseSettings):
     score_weight_offerings: float = 0.1
     inbox_debounce_seconds: float = 1.0
     inbox_bundle_name: str = "Inbox"
+    backup_retention_days: int = 14
 
     @field_validator("api_token", "mcp_token", "master_key", "font_dir", mode="before")
     @classmethod
@@ -96,6 +100,10 @@ class Settings(BaseSettings):
     @property
     def exports_dir(self) -> Path:
         return self.data_dir / "exports"
+
+    @property
+    def backups_dir(self) -> Path:
+        return self.data_dir / "backups"
 
     def score_weights(self) -> dict[str, float]:
         return {

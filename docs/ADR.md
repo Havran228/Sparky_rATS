@@ -40,6 +40,7 @@ Status values: `Proposed` (awaiting owner sign-off), `Accepted`, `Superseded by 
 | [ADR-023](#adr-023) | Generation is grounded on the confirmed profile and compiles from a file inside the sandbox | Proposed |
 | [ADR-024](#adr-024) | The backend image installs the Docling parse extra | Proposed |
 | [ADR-025](#adr-025) | Kanban writes stages, and the Google callback stays on the UI | Proposed |
+| [ADR-026](#adr-026) | Nightly backup sidecar, logical Qdrant snapshot, benchmark recorded before acceptance | Proposed |
 
 ---
 
@@ -1001,3 +1002,73 @@ place to store a URL that is not secret and a bearer that is.
   first time stages are read, and its cached status becomes `NEW`.
 - The Google Cloud redirect URI has to be the UI origin, not the API origin.
 - n8n's MCP Client Tool node uses `http://<tailscale-host>:8001/mcp` and `SPARKY_MCP_TOKEN`.
+
+---
+
+## ADR-026
+
+### Nightly backup sidecar, logical Qdrant snapshot, benchmark recorded before acceptance
+
+**Status:** Proposed
+**Refines:** ADR-001 (compose services), ADR-004 (how a Qdrant backup is taken), ADR-012
+(what a backup contains). **Records the Slice 5 result log** for ADR-002 and ADR-020.
+
+#### Context
+
+ADR-001 fixed the application at three services. A nightly backup still has to run somewhere.
+Embedded Qdrant takes an exclusive lock on its directory and its local client has no server
+snapshot API, so copying `/data/qdrant` while the backend is up is not a consistent backup.
+ADR-012 stores the Fernet master key beside the database, and a copy of the database without
+that key cannot be decrypted.
+
+The build plan's last bullet said to mark every ADR Accepted and to fill in benchmark numbers.
+This change was not produced on the Spark. A table of tok/s written here would be invented.
+The status value `Accepted` means the owner has signed off. The offline evaluation harness
+does have a real result: `python -m evals` reports agreement 1.0 for model `offline-lexical`
+and prompt `classify_match_v1` on the two committed cases (`platform-engineer`,
+`slovak-language`). That classifier is a lexical proxy, not the heavy role.
+
+#### Decision
+
+- Compose gains a `backup` sidecar. It has no published ports and no GPU. It shares the data
+  volume, waits until the backend healthcheck passes, and runs `scripts/backup.sh` once per
+  local day at 03:15 Europe/Bratislava, with a catch-up run if the container was down at that
+  minute. The three application services are unchanged.
+- The supported live backup is `POST /maintenance/backup` (bearer auth). It uses SQLite's online
+  backup API and `vector_store.export_snapshot`, which scrolls points into `points.jsonl`.
+  Directories under `/data/backups/` are named `YYYYMMDDTHHMMSSZ` and rotated after 14 days.
+  `credentials/` is not copied. The manifest says `master_key: NOT INCLUDED`.
+- If the API is unreachable, `scripts/backup.sh` falls back to `sqlite3 .backup` and copies the
+  Qdrant directory only while its `.lock` is free. A locked store leaves the sqlite backup in
+  place and exits 3. An HTTP error from the API does not fall back, because the backend is up
+  and the directory copy would race the lock.
+- Restore of sqlite and of a raw directory copy is `scripts/restore.sh`, and it refuses to run
+  while the database is busy or Qdrant is locked. A logical snapshot is loaded with
+  `POST /maintenance/restore` and `"replace": true`, which deletes and recreates the collection.
+- `scripts/benchmark_models.sh` pulls the ADR-002 candidates, measures TTFT and decode rate at
+  8k and 32k for `fast` and `heavy`, a one-pixel image for `vision`, and a short batch for
+  `embed` (1024 dimensions required). It writes `docs/benchmarks.md` only after Ollama answers.
+  It does not edit `config.py`. Role defaults stay the ADR-002 candidates until that file
+  shows a Spark run and someone changes them on purpose.
+- Status lines in this log stay `Proposed`. After the Spark benchmark is in
+  `docs/benchmarks.md`, acceptance is a new record (ADR-027) that names the date and the
+  measured defaults. That record is the sign-off. It is not part of this change.
+
+#### Alternatives considered
+
+- Copy the Qdrant directory on a timer while the backend is running. Rejected: the lock means
+  the copy can tear.
+- Add a Qdrant server container so the snapshot API exists. Rejected for the same reason as
+  ADR-004: one more service for a few thousand points. The logical snapshot uses the narrow
+  `vector_store.py` surface and restores through it.
+- Mark the ADRs Accepted in this commit and leave the benchmark numbers blank. Rejected:
+  `Accepted` would claim a sign-off and a measurement that have not happened.
+
+#### Consequences
+
+- A backend image rebuild is still the heavy one. The backup image is Alpine plus sqlite,
+  curl, and bash.
+- Losing `master.key` makes every database backup unreadable. The runbook says to store that
+  file outside `/data/backups/`.
+- `docs/benchmarks.md` in this commit is the unrun page. Role defaults in `config.py` are
+  still the candidates from ADR-002.

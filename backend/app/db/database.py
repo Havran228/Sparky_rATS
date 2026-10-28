@@ -55,6 +55,19 @@ class Database:
             else:
                 self._conn.commit()
 
+    def backup_to(self, dest: Path) -> None:
+        """Consistent online copy via SQLite's backup API (ADR-003, ADR-026)."""
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if dest.exists():
+            raise FileExistsError(dest)
+        target = sqlite3.connect(dest)
+        try:
+            with self._lock:
+                self._conn.backup(target)
+            target.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        finally:
+            target.close()
+
     def migrate(self) -> list[int]:
         self.execute(
             """

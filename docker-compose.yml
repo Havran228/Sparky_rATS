@@ -1,4 +1,5 @@
-# Sparky_rATS — three services (ADR-001).
+# Sparky_rATS. ollama, backend, and frontend are the application services (ADR-001).
+# backup is a sidecar with no ports and no GPU (ADR-026).
 # Ollama is the only service with the GPU. It is not published on the host;
 # the backend reaches it at http://ollama:11434.
 # API and MCP are published on SPARKY_BIND_HOST only (ADR-013). Inside the
@@ -83,3 +84,21 @@ services:
       - "${SPARKY_BIND_HOST:-127.0.0.1}:3000:3000"
     depends_on:
       - backend
+
+  backup:
+    build:
+      context: ./scripts
+      dockerfile: Dockerfile.backup
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Bratislava
+      SPARKY_DATA_DIR: /data
+      SPARKY_API_BASE: http://backend:8000
+      SPARKY_API_TOKEN: ${SPARKY_API_TOKEN:-}
+      SPARKY_BACKUP_AT: ${SPARKY_BACKUP_AT:-03:15}
+      SPARKY_BACKUP_RETENTION_DAYS: ${SPARKY_BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - ${SPARKY_HOST_DATA_DIR:-/mnt/data/sparky_rats}:/data
+    depends_on:
+      backend:
+        condition: service_healthy

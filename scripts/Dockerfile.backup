@@ -1,0 +1,14 @@
+# Nightly backup sidecar (ADR-026). No ports, no GPU, no application code.
+FROM alpine:3.21
+
+RUN apk add --no-cache bash sqlite tzdata curl ca-certificates
+
+COPY backup.sh backup-entry.sh restore.sh /usr/local/bin/
+RUN chmod 0755 /usr/local/bin/backup.sh /usr/local/bin/backup-entry.sh /usr/local/bin/restore.sh
+
+ENV TZ=Europe/Bratislava \
+    SPARKY_DATA_DIR=/data \
+    SPARKY_BACKUP_AT=03:15 \
+    SPARKY_API_BASE=http://backend:8000
+
+ENTRYPOINT ["/usr/local/bin/backup-entry.sh"]
