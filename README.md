@@ -9,10 +9,10 @@ down for recruiters. Sparky_rATS flips that: it ingests the job, compares it aga
 actually done, tells you where you pass, where you can bridge, and where you genuinely fall short,
 and then compiles an ATS-safe CV and cover letter (EN / SK) that you review and submit yourself.
 
-> Status: **Slice 2 is implemented on this branch** (bundle upload, inbox ingest, chunking,
-> FTS5 and embeddings, lexical plus cited traffic-light matching, skills profile, eval harness),
-> stacked on Slice 1. It is not merged to `main` yet. Architecture decisions are recorded in
-> [docs/ADR.md](docs/ADR.md). Slices 3–5 are not built yet.
+> Status: **Slice 3 is implemented on this branch** (profile-grounded CV and cover letters,
+> fixed Typst templates, sandboxed compile, PDF text round-trip, version diff, and
+> mark-as-submitted), stacked on Slices 1 and 2. It is not merged to `main` yet.
+> Architecture decisions are recorded in [docs/ADR.md](docs/ADR.md). Slices 4–5 are not built yet.
 
 ### Run the skeleton
 
@@ -43,6 +43,8 @@ The UI calls the API through the Next.js server, which adds the bearer token.
 `POST /salary/net` and profile edits are synchronous.
 
 Bundles: `POST /bundles`, `POST /bundles/{id}/documents` (multipart), `POST /projects/{id}/evaluate`.
+Documents: `POST /projects/{id}/documents` (202 + job), `GET /documents/{id}/pdf`,
+`GET /documents/{id}/diff/{other_id}`, `POST /documents/{id}/submit`.
 Text, Markdown, and HTML parse without extra packages. PDF and DOCX need
 `pip install 'sparky-rats[parse]'` (Docling). Photos are transcribed by the vision role.
 Dropping a file into `$SPARKY_DATA_DIR/inbox` moves it to `bundles/_inbox` and ingests it into
@@ -205,9 +207,13 @@ FTS5 (the "what the ATS sees" layer) → hybrid retrieval (dense + FTS5) → hea
 requirement green/yellow/red with chunk citations (structured output) → citations verified against
 the retrieved set → score computed deterministically from explicit weights.
 
-**Generation.** Heavy LLM fills a `ResumeModel` / `CoverLetterModel` → fixed Typst template renders it
-→ `typst compile --root <tmpdir>` → `pdftotext` → lexical matcher re-run on the actual PDF text →
-`generated_documents` row. Submitting attaches the PDF to the project's `active_application` bundle.
+**Generation.** Heavy LLM fills a `ResumeModel` / `CoverLetterModel`. The confirmed profile overwrites
+the header and languages, skills outside that inventory are dropped, and employers or schools that
+do not appear in the selected evidence are dropped too. A fixed Typst template renders the JSON via
+`sys.inputs` inside `typst compile --root <tmpdir>` → `pdftotext` → lexical matcher re-run on the
+PDF text → `generated_documents` row. Submitting copies the PDF into the project's
+`active_application` bundle so a later match can cite it. Raw Typst, for manual use, compiles in
+the same sandbox.
 
 ## Integration surface (MCP)
 
@@ -284,7 +290,9 @@ Planned layout (created incrementally by the build slices):
 │   │       ├── resume_en.typ
 │   │       ├── resume_sk.typ
 │   │       └── cover_letter.typ
-│   ├── tests/                      # salary goldens, scraper fixtures, matching tests
+│   ├── scripts/
+│   │   └── install_typst.sh        # pinned Typst CLI for the image and CI
+│   ├── tests/                      # salary goldens, scraper fixtures, sandbox tests
 │   └── evals/                      # posting + bundle cases, agreement by model/prompt
 ├── frontend/
 │   ├── Dockerfile

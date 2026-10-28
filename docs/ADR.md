@@ -37,6 +37,7 @@ Status values: `Proposed` (awaiting owner sign-off), `Accepted`, `Superseded by 
 | [ADR-020](#adr-020) | Testing and evaluation: golden tests, fixtures, and a prompt evaluation harness | Proposed |
 | [ADR-021](#adr-021) | Missing JSON-LD is parsed from HTML; Crawl4AI stays optional | Proposed |
 | [ADR-022](#adr-022) | PDF and DOCX parsing is an optional Docling extra | Proposed |
+| [ADR-023](#adr-023) | Generation is grounded on the confirmed profile and compiles from a file inside the sandbox | Proposed |
 
 ---
 
@@ -872,3 +873,57 @@ PDF and DOCX remain the right Docling job when the owner actually has them.
 - CI and the default image stay free of Torch.
 - A CV that is only a PDF does not become searchable until the parse extra is installed.
 - Lexical matching still runs when Ollama is down, as long as the text was extracted.
+
+---
+
+## ADR-023
+
+### Generation is grounded on the confirmed profile and compiles from a file inside the sandbox
+
+**Status:** Proposed
+**Refines:** ADR-009 (the compile command and who may appear on the page) and ADR-015 (what
+"mark as submitted" copies).
+
+#### Context
+
+ADR-009 passes the resume JSON as `typst compile --input data=<json>`. A real CV is larger than
+a comfortable argv, and quoting JSON on the command line is brittle. The same record says the
+generator must not invent qualifications, but a structured-output model will still name employers
+and tools that are not in the profile or the bundles unless something after the model checks.
+
+`pdftotext` is required for the round-trip. A PDF with no text layer cannot be cited later, so
+submission has to refuse it. The letter date should be the candidate's local date; this deployment
+is in Europe/Bratislava.
+
+#### Decision
+
+- The model JSON is written as `model.json` inside the throwaway `--root`. The template reads
+  it with `json(sys.inputs.data)`. `--input data=model.json` passes that relative path.
+  `--font-path` points at Liberation Sans and Roboto when those directories exist, and system
+  fonts are ignored so the compile does not depend on whatever else is installed.
+- The Typst process gets a fresh environment (`PATH`, `LANG`, `HOME` and `TMPDIR` inside the
+  root). It does not inherit `SPARKY_MASTER_KEY` or the rest of the server environment. Package
+  lookup is pinned to empty directories inside the root. Markup that `#import`s or `#include`s
+  is rejected before compile. `#read` of a path outside the root fails at compile time.
+- Before compile, the confirmed profile replaces the contact block and the language list.
+  Skill items that are not the confirmed inventory, or an alias of it, are dropped. Experience
+  and education entries whose company or institution does not occur, on a word boundary, in the
+  supplied bundle evidence are dropped. Generation refuses to call the model until the profile
+  has a name, at least one confirmed skill, and some evidence text.
+- The round-trip report is the lexical matcher run on whitespace-normalized `pdftotext` output.
+  When the job was given a match evaluation, the terms are that evaluation's keyword list;
+  otherwise they are the posting's requirement lines. `mandatory_missing` is stored on the row.
+- Marking a document submitted copies the PDF into the project's `active_application` bundle
+  (created if needed), chunks the PDF text, and embeds when the embed role answers. A second
+  submit of the same bytes does not insert another document. An empty text layer fails the job.
+- Cover-letter dates use `SPARKY_LETTER_TIMEZONE`, default `Europe/Bratislava`.
+- Raw markup is still compiled, under the same root, and stored with `template = raw`. It does
+  not go through the model.
+
+#### Consequences
+
+- The diff of two versions is a diff of the grounded JSON, which is what was compiled.
+- A skill the model invented shows up in `ats_roundtrip_report.grounding.dropped_skills` and
+  not in the PDF.
+- CI installs the pinned Typst binary, Poppler, Liberation Sans, and Roboto. The backend image
+  does the same.

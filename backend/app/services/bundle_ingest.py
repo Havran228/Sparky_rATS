@@ -147,7 +147,7 @@ async def ingest_stored_file(
         chunks=drafts,
     )
     report(80, "embedding")
-    embedded, embed_error = await _embed_document(
+    embedded, embed_error = await embed_document(
         document,
         bundle.project_id,
         ollama,
@@ -199,7 +199,7 @@ async def _transcribe(data: bytes, ollama: OllamaClient) -> VisionTranscript:
     )
 
 
-async def _embed_document(
+async def embed_document(
     document: DocumentRecord,
     project_id: str | None,
     ollama: OllamaClient,

@@ -1,1 +1,1 @@
-"""Domain services: ingest, payroll, bundles, matching, and the inbox watcher."""
+"""Domain services: ingest, payroll, bundles, matching, generation, and the watcher."""

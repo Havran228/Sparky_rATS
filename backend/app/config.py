@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     api_token: str | None = None
     mcp_token: str | None = None
     master_key: str | None = None
+    typst_bin: str = "typst"
+    pdftotext_bin: str = "pdftotext"
+    font_dir: str | None = None
+    letter_timezone: str = "Europe/Bratislava"
     tailscale_proxy_hosts: str = "127.0.0.1,::1"
     cors_origins: str = "http://127.0.0.1:3000,http://localhost:3000"
 
@@ -51,7 +55,7 @@ class Settings(BaseSettings):
     inbox_debounce_seconds: float = 1.0
     inbox_bundle_name: str = "Inbox"
 
-    @field_validator("api_token", "mcp_token", "master_key", mode="before")
+    @field_validator("api_token", "mcp_token", "master_key", "font_dir", mode="before")
     @classmethod
     def blank_to_none(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
@@ -85,6 +89,10 @@ class Settings(BaseSettings):
     @property
     def inbox_staging_dir(self) -> Path:
         return self.bundles_dir / "_inbox"
+
+    @property
+    def exports_dir(self) -> Path:
+        return self.data_dir / "exports"
 
     def score_weights(self) -> dict[str, float]:
         return {

@@ -163,10 +163,38 @@ class KnowledgeRepository:
         self._db.execute("DELETE FROM knowledge_bundles WHERE id = ?", (bundle_id,))
         return document_ids
 
+    def active_bundle_for_project(self, project_id: str) -> BundleRecord | None:
+        row = self._db.query_one(
+            """
+            SELECT * FROM knowledge_bundles
+            WHERE project_id = ? AND kind = 'active_application'
+            ORDER BY created_at, id
+            LIMIT 1
+            """,
+            (project_id,),
+        )
+        if row is None:
+            return None
+        return _bundle(row)
+
     def find_by_hash(self, content_hash: str) -> DocumentRecord | None:
         row = self._db.query_one(
             "SELECT * FROM bundle_documents WHERE content_hash = ? ORDER BY created_at LIMIT 1",
             (content_hash,),
+        )
+        if row is None:
+            return None
+        return self._with_count(_document(row))
+
+    def find_in_bundle_by_hash(self, bundle_id: str, content_hash: str) -> DocumentRecord | None:
+        row = self._db.query_one(
+            """
+            SELECT * FROM bundle_documents
+            WHERE bundle_id = ? AND content_hash = ?
+            ORDER BY created_at, id
+            LIMIT 1
+            """,
+            (bundle_id, content_hash),
         )
         if row is None:
             return None

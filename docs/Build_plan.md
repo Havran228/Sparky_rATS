@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: slice3-generation
     content: "Slice 3 (ADR-009,015,018): ResumeModel/CoverLetterModel schemas; versioned prompts with SK terminology rules; resume_en.typ, resume_sk.typ, cover_letter.typ reading sys.inputs; sandboxed typst compile with --root tmpdir and --font-path; pdftotext round-trip ATS check; generated_documents versioning, diff view, mark-as-submitted into active_application bundle; PDF preview"
-    status: pending
+    status: completed
   - id: slice4-timeline-google-tools
     content: "Slice 4 (ADR-010,011,013,017): project_stages CRUD + Kanban with derived current_status; Google OAuth (Workspace-Internal) flow, read-only client with transport hook + unit tests per branch, timeline per project, EMAIL_THREAD attach, clipboard staging buffer, revoke-and-wipe; tool registry with side_effects flag; Ollama tool-calling agent loop for project chat; FastMCP streamable-HTTP server on separate port with bearer auth; optional MCP client with per-tool whitelist UI"
     status: pending

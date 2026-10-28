@@ -12,6 +12,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install Typst, poppler, and fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils fonts-liberation fonts-roboto ca-certificates curl xz-utils
+          sudo bash backend/scripts/install_typst.sh
       - name: Install backend
         run: python -m pip install -e "./backend[dev]"
       - name: Ruff

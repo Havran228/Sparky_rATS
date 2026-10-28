@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { EvaluationPanel } from "@/components/EvaluationPanel";
 import { SalaryPanel } from "@/components/SalaryPanel";
 import { getProject, type Project } from "@/lib/projects";
@@ -32,7 +33,7 @@ export function ProjectDetail({ id }: { id: string }) {
   const note = publishedNote(project);
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl">
       <Link href="/projects" className="text-sm text-muted underline-offset-4 hover:underline">
         All projects
       </Link>
@@ -53,6 +54,7 @@ export function ProjectDetail({ id }: { id: string }) {
         <RequirementList title="Preferred" items={project.requirements?.preferred ?? []} />
         <RequirementList title="Offered" items={project.offerings ?? []} />
         <EvaluationPanel projectId={project.id} />
+        <DocumentsPanel projectId={project.id} />
       </div>
 
       <div className="mt-8">

@@ -23,10 +23,12 @@ from app.jobs import JobRunner, format_sse
 from app.llm.ollama_client import OllamaClient, OllamaHealth
 from app.mcp_server import create_mcp_app
 from app.routes.bundles import install_bundle_routes
+from app.routes.documents import install_document_routes
 from app.routes.matching import install_matching_routes
 from app.routes.projects import install_project_routes
 from app.secrets_store import SecretsStore, ensure_bearer, load_fernet
 from app.services.bundle_ingest import register_bundle_handler
+from app.services.doc_generator import register_document_handlers
 from app.services.evaluator import register_evaluation_handler
 from app.services.ingest import register_ingest_handler
 from app.services.profile import register_profile_handler
@@ -120,6 +122,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_project_routes(app)
     install_bundle_routes(app)
     install_matching_routes(app)
+    install_document_routes(app)
     return app
 
 
@@ -220,6 +223,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         register_bundle_handler(runner, db, ollama, vectors, settings)
         register_evaluation_handler(runner, db, ollama, vectors, settings)
         register_profile_handler(runner, db, ollama)
+        register_document_handlers(runner, db, ollama, vectors, settings)
         app.state.job_runner = runner
         watcher = InboxWatcher(
             settings.inbox_dir,

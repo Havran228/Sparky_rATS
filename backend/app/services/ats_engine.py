@@ -177,6 +177,37 @@ def lexical_report(
     return LexicalReport(alias_version=dictionary.version, terms=terms)
 
 
+def lexical_report_text(
+    keywords: list[Keyword],
+    text: str,
+    *,
+    aliases: AliasDictionary | None = None,
+) -> LexicalReport:
+    """Word-boundary hits over one text blob, such as a compiled PDF's text layer."""
+    dictionary = aliases or load_aliases()
+    terms: list[LexicalTerm] = []
+    for keyword in keywords:
+        forms = dictionary.forms(keyword.term)
+        hit_count = count_forms(text, forms) if forms else 0
+        terms.append(
+            LexicalTerm(
+                term=keyword.term,
+                group=keyword.group,
+                category=keyword.category,
+                aliases=[
+                    form
+                    for form in forms
+                    if fold_diacritics(form) != fold_diacritics(keyword.term)
+                ],
+                hit_count=hit_count,
+                document_ids=[],
+                chunk_ids=[],
+                filter_hazard=keyword.group == "mandatory" and hit_count == 0,
+            )
+        )
+    return LexicalReport(alias_version=dictionary.version, terms=terms)
+
+
 def count_forms(content: str, forms: list[str]) -> int:
     folded = fold_diacritics(content)
     occupied: list[tuple[int, int]] = []
